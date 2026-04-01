@@ -6,14 +6,13 @@ using System.Text.Json;
 namespace MuafaPlus.Services;
 
 /// <summary>
-/// Client for interacting with the Claude API via Anthropic.SDK v3.x.
+/// Client for interacting with the Claude API via Anthropic.SDK v4.x.
 ///
-/// SDK upgrade notes (from v0.2.0 → v3.x):
-///   - AnthropicClient constructor accepts just the API key string directly.
-///   - MessageParameters is still the primary request type.
-///   - CacheControl type path is Anthropic.SDK.Common.CacheControl.
-///   - response.Usage.CacheCreationInputTokens / CacheReadInputTokens are still nullable ints.
-///   - RoleType is still available in Anthropic.SDK.Messaging.
+/// SDK v4 changes from v3:
+///   - SystemMessage is a plain string property on MessageParameters (no SystemMessage type).
+///   - CacheControl / CacheControlType removed — prompt caching not available in this SDK version.
+///   - Usage only exposes InputTokens / OutputTokens (no cache token fields).
+///   - Message content is List&lt;ContentBase&gt;; use Message(RoleType, string) constructor.
 /// </summary>
 public class MuafaApiClient
 {
@@ -71,20 +70,10 @@ public class MuafaApiClient
 
             var parameters = new MessageParameters
             {
-                Model      = _model,
-                MaxTokens  = _maxTokens,
-                Messages   =
-                [
-                    new Message { Role = RoleType.User, Content = userPrompt }
-                ],
-                System =
-                [
-                    new SystemMessage
-                    {
-                        Text         = systemPrompt,
-                        CacheControl = new CacheControl { Type = CacheControlType.Ephemeral }
-                    }
-                ]
+                Model         = _model,
+                MaxTokens     = _maxTokens,
+                SystemMessage = systemPrompt,
+                Messages      = [new Message(RoleType.User, userPrompt)]
             };
 
             var response = await _client.Messages.GetClaudeMessageAsync(parameters);
@@ -94,8 +83,8 @@ public class MuafaApiClient
 
             var usage = MapUsage(response.Usage);
             _logger.LogInformation(
-                "Stage 1 complete — in:{In} out:{Out} cache_read:{CR} cost:${Cost:F4}",
-                usage.InputTokens, usage.OutputTokens, usage.CacheReadTokens, usage.CalculateCost());
+                "Stage 1 complete — in:{In} out:{Out} cost:${Cost:F4}",
+                usage.InputTokens, usage.OutputTokens, usage.CalculateCost());
 
             return new Stage1Result
             {
@@ -139,20 +128,10 @@ public class MuafaApiClient
 
             var parameters = new MessageParameters
             {
-                Model     = _model,
-                MaxTokens = _maxTokens,
-                Messages  =
-                [
-                    new Message { Role = RoleType.User, Content = userPrompt }
-                ],
-                System =
-                [
-                    new SystemMessage
-                    {
-                        Text         = systemPrompt,
-                        CacheControl = new CacheControl { Type = CacheControlType.Ephemeral }
-                    }
-                ]
+                Model         = _model,
+                MaxTokens     = _maxTokens,
+                SystemMessage = systemPrompt,
+                Messages      = [new Message(RoleType.User, userPrompt)]
             };
 
             var response = await _client.Messages.GetClaudeMessageAsync(parameters);
@@ -223,9 +202,9 @@ public class MuafaApiClient
 
     private static TokenUsage MapUsage(Anthropic.SDK.Messaging.Usage sdkUsage) => new()
     {
-        InputTokens          = sdkUsage.InputTokens,
-        OutputTokens         = sdkUsage.OutputTokens,
-        CacheCreationTokens  = sdkUsage.CacheCreationInputTokens  ?? 0,
-        CacheReadTokens      = sdkUsage.CacheReadInputTokens      ?? 0
+        InputTokens         = sdkUsage.InputTokens,
+        OutputTokens        = sdkUsage.OutputTokens,
+        CacheCreationTokens = 0,  // SDK v4 does not expose cache token counts
+        CacheReadTokens     = 0
     };
 }

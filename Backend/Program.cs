@@ -99,9 +99,7 @@ try
                }));
     builder.Services.AddHangfireServer();
 
-    builder.Services.AddHttpClient()
-        .AddTransientHttpErrorPolicy(policy =>
-            policy.WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))));
+    builder.Services.AddHttpClient();
 
     var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
         ?? ["http://localhost:3000", "https://localhost:3000"];

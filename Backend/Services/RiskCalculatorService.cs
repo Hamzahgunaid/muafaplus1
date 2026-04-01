@@ -273,7 +273,7 @@ public class RiskCalculatorService
 
         // Split on common delimiters: comma, semicolon, newline, "and"
         var parts = medications
-            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+            .Split(new char[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Trim())
             .Where(p => p.Length > 2)
             .ToList();
@@ -288,7 +288,7 @@ public class RiskCalculatorService
             return 0;
 
         return comorbidities
-            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+            .Split(new char[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Trim())
             .Count(p => p.Length > 2);
     }
