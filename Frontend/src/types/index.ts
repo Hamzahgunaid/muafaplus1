@@ -1,0 +1,148 @@
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+export interface LoginRequest {
+  email:    string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token:       string;
+  physicianId: string;
+  fullName:    string;
+  specialty:   string;
+  institution: string | null;
+  expiresAt:   string;
+}
+
+export interface PhysicianProfile {
+  physicianId:  string;
+  fullName:     string;
+  specialty:    string;
+  institution:  string | null;
+  city:         string | null;
+  totalSessions: number;
+}
+
+// ── Patient ───────────────────────────────────────────────────────────────────
+
+export type AgeGroup =
+  | "Infant" | "Toddler" | "Child"
+  | "Adolescent" | "Adult" | "Elderly";
+
+export interface PatientData {
+  primaryDiagnosis:   string;
+  ageGroup:           AgeGroup;
+  comorbidities:      string;
+  currentMedications: string;
+  allergies:          string;
+  medicalRestrictions: string;
+}
+
+// ── Risk ──────────────────────────────────────────────────────────────────────
+
+export type RiskLevel = "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
+
+export interface RiskScore {
+  acuteFactors:      string[];
+  acutePoints:       number;
+  complexityFactors: string[];
+  complexityPoints:  number;
+  protectiveFactors: string[];
+  protectivePoints:  number;
+  totalScore:        number;
+  riskLevel:         RiskLevel;
+  rationale:         string;
+}
+
+// ── Articles ──────────────────────────────────────────────────────────────────
+
+export interface ArticleContent {
+  articleId:        string;
+  titleAr:          string;
+  titleEn:          string;
+  coverageCodes:    string[];
+  priority:         string;
+  riskLevel:        string;
+  contentAr:        string;
+  wordCount:        number;
+  sectionsIncluded: number[];
+  sources:          { title: string; url: string; year: number }[];
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+
+export type SessionStatus = "pending" | "in_progress" | "complete" | "failed";
+
+export interface SessionSummary {
+  sessionId:     string;
+  patientId:     string;
+  status:        SessionStatus;
+  riskLevel:     RiskLevel | null;
+  totalArticles: number | null;
+  totalCost:     number | null;
+  startedAt:     string;
+  completedAt:   string | null;
+}
+
+// ── Workflow result ───────────────────────────────────────────────────────────
+
+export interface WorkflowResult {
+  sessionId:        string;
+  patientId:        string;
+  success:          boolean;
+  cSharpRiskScore:  RiskScore | null;
+  summaryArticle:   string | null;
+  riskAssessment:   RiskScore | null;
+  detailedArticles: ArticleContent[];
+  stage1Cost:       number;
+  stage2Cost:       number;
+  totalCost:        number;
+  errorMessage:     string | null;
+}
+
+// ── API wrapper ───────────────────────────────────────────────────────────────
+
+export interface ApiResponse<T> {
+  success:  boolean;
+  data:     T | null;
+  error:    string | null;
+  errorType: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+// ── Session detail (from GET /Session/{id}) ───────────────────────────────────
+
+export interface ArticleRecord {
+  articleId:    string;
+  articleType:  "summary" | "detailed";
+  coverageCodes: string;
+  content:      string;
+  wordCount:    number;
+  costUsd:      number;
+  createdAt:    string;
+}
+
+export interface SessionDetail {
+  sessionId:     string;
+  patientId:     string;
+  physicianId:   string;
+  stage:         string;
+  status:        SessionStatus["status"];
+  riskLevel:     RiskLevel | null;
+  totalArticles: number | null;
+  totalCost:     number | null;
+  startedAt:     string;
+  completedAt:   string | null;
+  errorMessage:  string | null;
+  articles:      ArticleRecord[];
+}
+
+export interface SessionStatus {
+  sessionId:     string;
+  status:        "pending" | "in_progress" | "complete" | "failed";
+  riskLevel:     RiskLevel | null;
+  totalArticles: number | null;
+  totalCost:     number | null;
+  completedAt:   string | null;
+  errorMessage:  string | null;
+}

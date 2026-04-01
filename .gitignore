@@ -1,0 +1,7 @@
+Backend/bin/ 
+Backend/obj/ 
+Backend/logs/ 
+Backend/Migrations/ 
+Frontend/node_modules/ 
+Frontend/.next/ 
+Frontend/.env.local 

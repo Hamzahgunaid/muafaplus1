@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: "Noto Sans Arabic", "Sakkal Majalla", Arial, sans-serif;
+    direction: rtl;
+  }
+
+  /* Ensure markdown content from the API renders correctly in RTL */
+  .article-content {
+    direction: rtl;
+    text-align: right;
+    line-height: 1.85;
+    font-size: 1rem;
+  }
+  .article-content h1,
+  .article-content h2,
+  .article-content h3 {
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: #085041;
+  }
+  .article-content h2 { font-size: 1.2rem; }
+  .article-content h3 { font-size: 1.05rem; }
+  .article-content p  { margin-bottom: 0.875rem; }
+  .article-content ul,
+  .article-content ol {
+    padding-right: 1.5rem;
+    padding-left: 0;
+    margin-bottom: 0.875rem;
+  }
+  .article-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .article-content th,
+  .article-content td {
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 0.75rem;
+    text-align: right;
+  }
+  .article-content th { background: #E1F5EE; font-weight: 600; }
+  .article-content strong { font-weight: 600; }
+}
+
+@layer utilities {
+  .risk-low      { @apply text-brand-600 bg-brand-50 border-brand-200; }
+  .risk-moderate { @apply text-amber-700  bg-amber-50  border-amber-200; }
+  .risk-high     { @apply text-orange-700 bg-orange-50 border-orange-200; }
+  .risk-critical { @apply text-red-700    bg-red-50    border-red-200; }
+}
