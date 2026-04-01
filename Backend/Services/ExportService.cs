@@ -5,6 +5,8 @@ using MuafaPlus.Models;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using QuestDocument = QuestPDF.Fluent.Document;
+using OxColor       = DocumentFormat.OpenXml.Wordprocessing.Color;
 
 namespace MuafaPlus.Services;
 
@@ -35,7 +37,7 @@ public class ExportService
         _logger.LogInformation("Generating PDF — session:{S} articles:{C}",
             data.SessionId, data.Articles.Count);
 
-        var document = Document.Create(container =>
+        var document = QuestDocument.Create(container =>
         {
             container.Page(page =>
             {
@@ -137,7 +139,7 @@ public class ExportService
         using var wordDoc = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document);
 
         var mainPart = wordDoc.AddMainDocumentPart();
-        mainPart.Document = new Document(new Body());
+        mainPart.Document = new DocumentFormat.OpenXml.Wordprocessing.Document(new Body());
         var body = mainPart.Document.Body!;
 
         // Document-level RTL: set section properties
@@ -218,7 +220,7 @@ public class ExportService
             new RightToLeftText()
         );
         if (bold)  runProps.AppendChild(new Bold());
-        if (color != null) runProps.AppendChild(new Color { Val = color });
+        if (color != null) runProps.AppendChild(new OxColor { Val = color });
 
         var paraProps = new ParagraphProperties(
             new BiDi(),
@@ -236,7 +238,7 @@ public class ExportService
     private static Paragraph HorizontalRule()
     {
         var paraProps = new ParagraphProperties();
-        paraProps.AppendChild(new ParagraphBorder(
+        paraProps.AppendChild(new ParagraphBorders(
             new BottomBorder
             {
                 Val   = BorderValues.Single,
