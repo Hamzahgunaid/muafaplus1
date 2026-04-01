@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import type {
   ApiResponse, LoginRequest, LoginResponse, PatientData,
-  PhysicianProfile, SessionSummary, WorkflowResult,
+  PhysicianProfile, SessionSummary, SessionDetail, SessionStatus, WorkflowResult,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:5001";

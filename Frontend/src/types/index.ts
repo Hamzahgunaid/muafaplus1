@@ -71,12 +71,10 @@ export interface ArticleContent {
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
-export type SessionStatus = "pending" | "in_progress" | "complete" | "failed";
-
 export interface SessionSummary {
   sessionId:     string;
   patientId:     string;
-  status:        SessionStatus;
+  status:        SessionStatus["status"];
   riskLevel:     RiskLevel | null;
   totalArticles: number | null;
   totalCost:     number | null;
