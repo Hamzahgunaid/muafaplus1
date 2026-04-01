@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <!-- Anthropic Claude SDK — updated from 0.2.0 -->
-    <PackageReference Include="Anthropic.SDK" Version="3.7.4" />
+    <PackageReference Include="Anthropic.SDK" Version="4.0.0" />
 
     <!-- ASP.NET Core -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.10" />
