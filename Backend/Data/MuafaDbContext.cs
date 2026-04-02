@@ -35,15 +35,15 @@ public class MuafaDbContext : DbContext
             entity.Property(e => e.EmailNotifications).HasDefaultValue(true);
             entity.Property(e => e.SmsNotifications).HasDefaultValue(false);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
         });
 
         // ── PhysicianCredential ────────────────────────────────────────────────
         modelBuilder.Entity<PhysicianCredential>(entity =>
         {
             entity.HasKey(e => e.PhysicianId);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
             entity.HasOne(e => e.Physician)
                   .WithOne()
                   .HasForeignKey<PhysicianCredential>(e => e.PhysicianId)
@@ -56,8 +56,8 @@ public class MuafaDbContext : DbContext
             entity.HasKey(e => e.PatientId);
             entity.HasIndex(e => e.PhysicianId);
             entity.HasIndex(e => e.CreatedAt);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
             entity.HasOne(e => e.Physician)
                   .WithMany(p => p.Patients)
                   .HasForeignKey(e => e.PhysicianId)
@@ -72,7 +72,7 @@ public class MuafaDbContext : DbContext
             entity.HasIndex(e => e.PhysicianId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartedAt);
-            entity.Property(e => e.StartedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.StartedAt).HasDefaultValueSql("NOW()");
             entity.HasOne(e => e.Patient)
                   .WithMany(p => p.GenerationSessions)
                   .HasForeignKey(e => e.PatientId)
@@ -90,7 +90,7 @@ public class MuafaDbContext : DbContext
             entity.HasIndex(e => e.SessionId);
             entity.HasIndex(e => e.ArticleType);
             entity.HasIndex(e => e.CreatedAt);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
             entity.HasOne(e => e.GenerationSession)
                   .WithMany(s => s.GeneratedArticles)
                   .HasForeignKey(e => e.SessionId)

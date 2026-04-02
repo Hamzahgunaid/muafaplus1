@@ -1,6 +1,6 @@
 using System.Text;
 using Hangfire;
-using Hangfire.SqlServer;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -52,7 +52,7 @@ try
     });
 
     builder.Services.AddDbContext<MuafaDbContext>(opts =>
-        opts.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+        opts.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
     builder.Services.AddHealthChecks().AddDbContextCheck<MuafaDbContext>("database");
 
@@ -89,14 +89,8 @@ try
         cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
            .UseSimpleAssemblyNameTypeSerializer()
            .UseRecommendedSerializerSettings()
-           .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"),
-               new SqlServerStorageOptions
-               {
-                   CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-                   SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-                   QueuePollInterval = TimeSpan.Zero,
-                   UseRecommendedIsolationLevel = true, DisableGlobalLocks = true
-               }));
+           .UsePostgreSqlStorage(c =>
+               c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
     builder.Services.AddHangfireServer();
 
     builder.Services.AddHttpClient();

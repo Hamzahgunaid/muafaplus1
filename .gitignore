@@ -1,7 +1,8 @@
-Backend/bin/ 
-Backend/obj/ 
-Backend/logs/ 
-Backend/Migrations/ 
-Frontend/node_modules/ 
-Frontend/.next/ 
-Frontend/.env.local 
+Backend/bin/
+Backend/obj/
+Backend/logs/
+Frontend/node_modules/
+Frontend/.next/
+Frontend/.env.local
+appsettings.Development.json
+Backend/appsettings.Development.json
