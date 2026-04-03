@@ -104,9 +104,10 @@ public class MuafaDbContext : DbContext
             new Physician { PhysicianId = "PHY003", FullName = "Dr. Mohammed Al-Zubairi", Specialty = "Endocrinology",  Email = "mohammed.z@diabetes.ye",   Phone = "+967-1-456789", LicenseNumber = "YE-ENDO-2020-103", Institution = "Diabetes Center",          City = "Sana'a", Country = "Yemen", IsActive = true, CreatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc), UpdatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc) }
         );
 
-        // Seed default credentials — bcrypt hash of "MuafaPlus2025!" with cost 12
+        // Seed default credentials — real BCrypt hash of "MuafaPlus2025!" at cost 12
+        // Generated via BCrypt.Net.BCrypt.HashPassword("MuafaPlus2025!", workFactor: 12)
         // All accounts require password reset on first login (MustResetOnNextLogin = true)
-        const string defaultHash = "$2a$12$K8BNpUn6WfEjLbhZM1Q7e.Yt5e7vSqMbXFkYpjHn1o2jNQp0vMsQK";
+        const string defaultHash = "$2a$12$YA59.209V0gVCqlmF2Gu4.4ds.ETlKE/MMNT0PpTNQUQABUMbAf7i";
         modelBuilder.Entity<PhysicianCredential>().HasData(
             new PhysicianCredential { PhysicianId = "PHY001", PasswordHash = defaultHash, MustResetOnNextLogin = true, CreatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc) },
             new PhysicianCredential { PhysicianId = "PHY002", PasswordHash = defaultHash, MustResetOnNextLogin = true, CreatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc) },
