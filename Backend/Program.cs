@@ -54,9 +54,6 @@ try
         }});
     });
 
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("DefaultConnection is not configured.");
-
     builder.Services.AddDbContext<MuafaDbContext>(opts =>
         opts.UseNpgsql(connectionString));
 
