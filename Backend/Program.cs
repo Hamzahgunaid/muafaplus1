@@ -51,8 +51,11 @@ try
         }});
     });
 
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("DefaultConnection is not configured.");
+
     builder.Services.AddDbContext<MuafaDbContext>(opts =>
-        opts.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+        opts.UseNpgsql(connectionString));
 
     builder.Services.AddHealthChecks().AddDbContextCheck<MuafaDbContext>("database");
 
@@ -90,7 +93,7 @@ try
            .UseSimpleAssemblyNameTypeSerializer()
            .UseRecommendedSerializerSettings()
            .UsePostgreSqlStorage(c =>
-               c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
+               c.UseNpgsqlConnection(connectionString)));
     builder.Services.AddHangfireServer();
 
     builder.Services.AddHttpClient();
