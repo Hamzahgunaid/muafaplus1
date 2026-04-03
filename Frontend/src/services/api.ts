@@ -4,6 +4,7 @@ import type {
   PhysicianProfile, SessionSummary, SessionDetail, SessionStatus, WorkflowResult,
 } from "@/types";
 
+// Set NEXT_PUBLIC_API_URL in .env.local (dev) or Vercel environment variables (production).
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:5001";
 
 // ── Axios instance ────────────────────────────────────────────────────────────
