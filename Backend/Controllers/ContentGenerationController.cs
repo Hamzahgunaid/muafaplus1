@@ -36,7 +36,9 @@ public class ContentGenerationController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ValidationErrorResponse());
 
-        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value ?? request.PhysicianId;
+        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+            return BadRequest(new ApiResponse<object> { Success = false, Error = "لم يتم التحقق من هوية الطبيب.", ErrorType = "MissingPhysicianClaim" });
 
         try
         {
@@ -72,7 +74,9 @@ public class ContentGenerationController : ControllerBase
         [FromBody] GenerateContentRequest request)
     {
         if (!ModelState.IsValid) return BadRequest(ValidationErrorResponse());
-        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value ?? request.PhysicianId;
+        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+            return BadRequest(new ApiResponse<object> { Success = false, Error = "لم يتم التحقق من هوية الطبيب.", ErrorType = "MissingPhysicianClaim" });
 
         try
         {

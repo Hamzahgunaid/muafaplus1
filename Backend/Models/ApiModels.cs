@@ -133,13 +133,9 @@ public class WorkflowResult
 
 public class GenerateContentRequest
 {
-    [Required]
-    public string PatientData_PhysicianId { get; set; } = string.Empty;
-
-    // PhysicianId will be extracted from JWT in Phase 2.
-    // For now it is accepted as a request field so existing tests still work.
-    [Required]
-    public string PhysicianId { get; set; } = string.Empty;
+    // PhysicianId is extracted from the JWT claim in the controller (Rule 4).
+    // Accepted in the body as a fallback for tooling/tests only — not required.
+    public string? PhysicianId { get; set; }
 
     [Required]
     public PatientData PatientData { get; set; } = new();
