@@ -1,10 +1,15 @@
+using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
+using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuafaPlus.Data;
+using MuafaPlus.Models;
 using MuafaPlus.Services;
 using QuestPDF.Infrastructure;
 using Serilog;
@@ -121,6 +126,37 @@ try
                   .AllowAnyHeader()
                   .AllowCredentials()));
 
+    var generationsPerHour = builder.Configuration.GetValue<int>("RateLimit:GenerationsPerHour", 10);
+
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.AddPolicy("GenerationsPerHour", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                              ?? "anonymous",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit          = generationsPerHour,
+                    Window               = TimeSpan.FromHours(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit           = 0
+                }));
+
+        options.OnRejected = async (context, token) =>
+        {
+            context.HttpContext.Response.StatusCode  = StatusCodes.Status429TooManyRequests;
+            context.HttpContext.Response.ContentType = "application/json";
+            var body = JsonSerializer.Serialize(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = $"لقد تجاوزت الحد المسموح به من الطلبات. الحد الأقصى هو {generationsPerHour} طلبات في الساعة الواحدة.",
+                ErrorType = "RateLimitExceeded"
+            });
+            await context.HttpContext.Response.WriteAsync(body, token);
+        };
+    });
+
     var app = builder.Build();
 
     if (app.Environment.IsDevelopment())
@@ -143,6 +179,7 @@ try
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseRateLimiter();
     app.UseHangfireDashboard("/hangfire");
     app.MapControllers();
     app.MapHealthChecks("/health");
