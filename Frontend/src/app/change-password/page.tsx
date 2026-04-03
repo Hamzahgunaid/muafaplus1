@@ -2,28 +2,25 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { useAuthStore } from "@/lib/store";
 import { authApi } from "@/services/api";
-import type { LoginRequest } from "@/types";
+import type { ChangePasswordRequest } from "@/types";
 
-export default function LoginPage() {
-  const router  = useRouter();
-  const login   = useAuthStore((s) => s.login);
-  const [error, setError] = useState<string | null>(null);
+export default function ChangePasswordPage() {
+  const router = useRouter();
+  const [error, setError]     = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginRequest>();
+  const { register, handleSubmit, formState: { errors } } = useForm<ChangePasswordRequest>();
 
-  const onSubmit = async (data: LoginRequest) => {
+  const onSubmit = async (data: ChangePasswordRequest) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await authApi.login(data);
-      if (res.success && res.data) {
-        login(res.data);
-        router.push(res.data.mustResetOnNextLogin ? "/change-password" : "/dashboard");
+      const res = await authApi.changePassword(data);
+      if (res.success) {
+        router.push("/dashboard");
       } else {
-        setError(res.error ?? "فشل تسجيل الدخول");
+        setError(res.error ?? "فشل تغيير كلمة المرور");
       }
     } catch {
       setError("خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.");
@@ -42,12 +39,15 @@ export default function LoginPage() {
             <span className="text-white text-2xl font-bold">م+</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">معافى+</h1>
-          <p className="text-gray-500 text-sm mt-1">لوحة تحكم الطبيب</p>
+          <p className="text-gray-500 text-sm mt-1">تغيير كلمة المرور</p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h2 className="text-lg font-semibold text-gray-800 mb-6">تسجيل الدخول</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">تغيير كلمة المرور</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            يجب عليك تغيير كلمة المرور قبل المتابعة.
+          </p>
 
           {error && (
             <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -59,41 +59,41 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                البريد الإلكتروني
-              </label>
-              <input
-                type="email"
-                autoComplete="email"
-                className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 transition
-                  ${errors.email ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"}`}
-                placeholder="doctor@hospital.ye"
-                {...register("email", {
-                  required: "البريد الإلكتروني مطلوب",
-                  pattern:  { value: /\S+@\S+\.\S+/, message: "صيغة البريد غير صحيحة" },
-                })}
-              />
-              {errors.email && (
-                <p className="text-red-600 text-xs mt-1">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                كلمة المرور
+                كلمة المرور الحالية
               </label>
               <input
                 type="password"
                 autoComplete="current-password"
                 className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 transition
-                  ${errors.password ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"}`}
+                  ${errors.currentPassword ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"}`}
                 placeholder="••••••••"
-                {...register("password", {
-                  required: "كلمة المرور مطلوبة",
+                {...register("currentPassword", {
+                  required:  "كلمة المرور الحالية مطلوبة",
                   minLength: { value: 8, message: "8 أحرف على الأقل" },
                 })}
               />
-              {errors.password && (
-                <p className="text-red-600 text-xs mt-1">{errors.password.message}</p>
+              {errors.currentPassword && (
+                <p className="text-red-600 text-xs mt-1">{errors.currentPassword.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                كلمة المرور الجديدة
+              </label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 transition
+                  ${errors.newPassword ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"}`}
+                placeholder="••••••••"
+                {...register("newPassword", {
+                  required:  "كلمة المرور الجديدة مطلوبة",
+                  minLength: { value: 8, message: "8 أحرف على الأقل" },
+                })}
+              />
+              {errors.newPassword && (
+                <p className="text-red-600 text-xs mt-1">{errors.newPassword.message}</p>
               )}
             </div>
 
@@ -103,7 +103,7 @@ export default function LoginPage() {
               className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold text-sm
                          hover:bg-brand-800 active:scale-[0.99] transition disabled:opacity-60"
             >
-              {loading ? "جاري تسجيل الدخول..." : "دخول"}
+              {loading ? "جاري الحفظ..." : "حفظ كلمة المرور"}
             </button>
           </form>
         </div>

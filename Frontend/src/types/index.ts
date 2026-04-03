@@ -12,6 +12,12 @@ export interface LoginResponse {
   specialty:   string;
   institution: string | null;
   expiresAt:   string;
+  mustResetOnNextLogin: boolean;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword:     string;
 }
 
 export interface PhysicianProfile {
