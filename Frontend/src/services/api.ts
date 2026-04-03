@@ -1,9 +1,10 @@
 import axios, { AxiosInstance } from "axios";
 import type {
-  ApiResponse, LoginRequest, LoginResponse, PatientData,
+  ApiResponse, LoginRequest, LoginResponse, ChangePasswordRequest, PatientData,
   PhysicianProfile, SessionSummary, SessionDetail, SessionStatus, WorkflowResult,
 } from "@/types";
 
+// Set NEXT_PUBLIC_API_URL in .env.local (dev) or Vercel environment variables (production).
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:5001";
 
 // ── Axios instance ────────────────────────────────────────────────────────────
@@ -45,6 +46,11 @@ export const authApi = {
 
   me: async (): Promise<ApiResponse<PhysicianProfile>> => {
     const { data } = await http.get<ApiResponse<PhysicianProfile>>("/auth/me");
+    return data;
+  },
+
+  changePassword: async (req: ChangePasswordRequest): Promise<ApiResponse<object>> => {
+    const { data } = await http.post<ApiResponse<object>>("/auth/change-password", req);
     return data;
   },
 };

@@ -25,6 +25,7 @@ public class LoginResponse
     public string Specialty    { get; set; } = string.Empty;
     public string? Institution { get; set; }
     public DateTime ExpiresAt  { get; set; }
+    public bool MustResetOnNextLogin { get; set; }
 }
 
 // ── Physician credentials entity ──────────────────────────────────────────────
@@ -45,6 +46,19 @@ public class PhysicianCredential
 
     // Navigation
     public Physician? Physician  { get; set; }
+}
+
+// ── Change-password request ───────────────────────────────────────────────────
+
+public class ChangePasswordRequest
+{
+    [Required]
+    [MinLength(8)]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8)]
+    public string NewPassword { get; set; } = string.Empty;
 }
 
 // ── Token claims helper ───────────────────────────────────────────────────────
