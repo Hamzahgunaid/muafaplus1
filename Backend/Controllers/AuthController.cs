@@ -100,13 +100,71 @@ public class AuthController : ControllerBase
             Success = true,
             Data    = new LoginResponse
             {
-                Token        = token,
-                PhysicianId  = physician.PhysicianId,
-                FullName     = physician.FullName,
-                Specialty    = physician.Specialty,
-                Institution  = physician.Institution,
-                ExpiresAt    = DateTime.UtcNow.AddHours(expiryHours)
+                Token                = token,
+                PhysicianId          = physician.PhysicianId,
+                FullName             = physician.FullName,
+                Specialty            = physician.Specialty,
+                Institution          = physician.Institution,
+                ExpiresAt            = DateTime.UtcNow.AddHours(expiryHours),
+                MustResetOnNextLogin = credential.MustResetOnNextLogin
             }
+        });
+    }
+
+    /// <summary>
+    /// Changes the authenticated physician's password.
+    /// Clears MustResetOnNextLogin on success.
+    /// </summary>
+    [HttpPost("change-password")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<object>>> ChangePassword(
+        [FromBody] ChangePasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Error   = "Validation failed.",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["errors"] = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList()
+                }
+            });
+
+        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+
+        var credential = await _db.PhysicianCredentials.FindAsync(physicianId);
+        if (credential == null)
+            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, credential.PasswordHash))
+        {
+            _logger.LogWarning("Change-password: wrong current password — physician:{Id}", physicianId);
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Error   = "كلمة المرور الحالية غير صحيحة."
+            });
+        }
+
+        credential.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
+        credential.MustResetOnNextLogin = false;
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Password changed — physician:{Id}", physicianId);
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Metadata = new Dictionary<string, object> { ["physician_id"] = physicianId }
         });
     }
 
