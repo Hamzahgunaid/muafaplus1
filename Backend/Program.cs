@@ -175,7 +175,8 @@ try
         });
     }
 
-    app.UseHttpsRedirection();
+    if (app.Environment.IsDevelopment())
+        app.UseHttpsRedirection();
     app.UseCors();
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
@@ -192,7 +193,8 @@ try
     Log.Information("Muafa+ API starting - env:{Env}",
         app.Environment.EnvironmentName);
 
-    app.Run();
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+    app.Run($"http://+:{port}");
 }
 catch (Exception ex)
 {
