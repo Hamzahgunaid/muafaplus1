@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -33,14 +33,16 @@ try
     {
         c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
         {
-            Title   = "Muafa+ API",
+            Title = "Muafa+ API",
             Version = "v1",
-            Description = "Medical education content generation - post-diagnosis patient care, Yemen"
+            Description = "Medical education content generation - Yemen"
         });
         c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
         {
-            Name = "Authorization", Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-            Scheme = "bearer", BearerFormat = "JWT",
+            Name = "Authorization",
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
             In = Microsoft.OpenApi.Models.ParameterLocation.Header,
             Description = "Enter: Bearer {token}"
         });
@@ -49,18 +51,20 @@ try
             new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
                 Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" }
-            }, Array.Empty<string>()
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
         }});
     });
-
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("DefaultConnection is not configured.");
 
     builder.Services.AddDbContext<MuafaDbContext>(opts =>
         opts.UseNpgsql(connectionString));
 
-    builder.Services.AddHealthChecks().AddDbContextCheck<MuafaDbContext>("database");
+    builder.Services.AddHealthChecks()
+        .AddDbContextCheck<MuafaDbContext>("database");
 
     var jwtSecret = builder.Configuration["Jwt:Secret"]
         ?? throw new InvalidOperationException("Jwt:Secret must be configured.");
@@ -70,14 +74,18 @@ try
         {
             opts.TokenValidationParameters = new TokenValidationParameters
             {
-                ValidateIssuer = true, ValidateAudience = true,
-                ValidateLifetime = true, ValidateIssuerSigningKey = true,
-                ValidIssuer   = builder.Configuration["Jwt:Issuer"]   ?? "muafaplus-api",
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "muafaplus-api",
                 ValidAudience = builder.Configuration["Jwt:Audience"] ?? "muafaplus-ui",
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                IssuerSigningKey = new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(jwtSecret)),
                 ClockSkew = TimeSpan.FromMinutes(1)
             };
         });
+
     builder.Services.AddAuthorization();
 
     builder.Services.AddSingleton<PromptBuilder>();
@@ -96,23 +104,32 @@ try
            .UseRecommendedSerializerSettings()
            .UsePostgreSqlStorage(c =>
                c.UseNpgsqlConnection(connectionString)));
+
     builder.Services.AddHangfireServer();
 
     builder.Services.AddHttpClient();
 
-    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-        ?? ["http://localhost:3000", "https://localhost:3000"];
+    var allowedOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>()
+        ?? new[] { "http://localhost:3000", "https://localhost:3000" };
 
     builder.Services.AddCors(opts =>
         opts.AddDefaultPolicy(policy =>
-            policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader().AllowCredentials()));
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials()));
 
     var app = builder.Build();
 
     if (app.Environment.IsDevelopment())
     {
         using var scope = app.Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<MuafaDbContext>().Database.Migrate();
+        scope.ServiceProvider
+            .GetRequiredService<MuafaDbContext>()
+            .Database.Migrate();
+
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
@@ -130,8 +147,16 @@ try
     app.MapControllers();
     app.MapHealthChecks("/health");
 
-    Log.Information("Muafa+ API v1.2 starting - env:{Env}", app.Environment.EnvironmentName);
+    Log.Information("Muafa+ API starting - env:{Env}",
+        app.Environment.EnvironmentName);
+
     app.Run();
 }
-catch (Exception ex) { Log.Fatal(ex, "Application startup failed"); }
-finally { Log.CloseAndFlush(); }
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application startup failed");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
