@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MuafaPlus.Models;
 using MuafaPlus.Services;
 
@@ -26,8 +27,10 @@ public class ContentGenerationController : ControllerBase
     /// then GET /api/v1/Session/{sessionId} for full results.
     /// </summary>
     [HttpPost("generate/complete")]
+    [EnableRateLimiting("GenerationsPerHour")]
     [ProducesResponseType(typeof(ApiResponse<AsyncWorkflowResult>), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<AsyncWorkflowResult>>> GenerateComplete(
         [FromBody] GenerateContentRequest request)
     {
