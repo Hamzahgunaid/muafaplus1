@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,6 +18,9 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("DefaultConnection not configured.");
+
     builder.Host.UseSerilog((ctx, cfg) =>
         cfg.ReadFrom.Configuration(ctx.Configuration)
            .Enrich.FromLogContext()
@@ -32,7 +35,7 @@ try
         {
             Title   = "Muafa+ API",
             Version = "v1",
-            Description = "Medical education content generation — post-diagnosis patient care, Yemen"
+            Description = "Medical education content generation - post-diagnosis patient care, Yemen"
         });
         c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
         {
@@ -52,13 +55,12 @@ try
     });
 
     builder.Services.AddDbContext<MuafaDbContext>(opts =>
-        opts.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+        opts.UseNpgsql(connectionString));
 
     builder.Services.AddHealthChecks().AddDbContextCheck<MuafaDbContext>("database");
 
-    // JWT Authentication
     var jwtSecret = builder.Configuration["Jwt:Secret"]
-        ?? throw new InvalidOperationException("Jwt:Secret must be configured via user secrets.");
+        ?? throw new InvalidOperationException("Jwt:Secret must be configured.");
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(opts =>
@@ -90,7 +92,7 @@ try
            .UseSimpleAssemblyNameTypeSerializer()
            .UseRecommendedSerializerSettings()
            .UsePostgreSqlStorage(c =>
-               c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
+               c.UseNpgsqlConnection(connectionString)));
     builder.Services.AddHangfireServer();
 
     builder.Services.AddHttpClient();
@@ -109,7 +111,11 @@ try
         using var scope = app.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<MuafaDbContext>().Database.Migrate();
         app.UseSwagger();
-        app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "Muafa+ API v1"); c.RoutePrefix = string.Empty; });
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Muafa+ API v1");
+            c.RoutePrefix = string.Empty;
+        });
     }
 
     app.UseHttpsRedirection();
@@ -121,7 +127,7 @@ try
     app.MapControllers();
     app.MapHealthChecks("/health");
 
-    Log.Information("Muafa+ API v1.2 starting — env:{Env}", app.Environment.EnvironmentName);
+    Log.Information("Muafa+ API v1.2 starting - env:{Env}", app.Environment.EnvironmentName);
     app.Run();
 }
 catch (Exception ex) { Log.Fatal(ex, "Application startup failed"); }
