@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuafaPlus.Data;
+using MuafaPlus.Infrastructure;
 using MuafaPlus.Models;
 using MuafaPlus.Services;
 using QuestPDF.Infrastructure;
@@ -180,7 +181,11 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseRateLimiter();
-    app.UseHangfireDashboard("/hangfire");
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireDashboardAuthFilter(
+            app.Services.GetRequiredService<IConfiguration>()) }
+    });
     app.MapControllers();
     app.MapHealthChecks("/health");
 
