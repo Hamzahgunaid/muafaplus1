@@ -5,19 +5,29 @@ namespace MuafaPlus.Data;
 
 /// <summary>
 /// Phase 2: PhysicianCredentials added for JWT auth.
-/// DeleteBehavior aligned with SQL schema throughout.
-/// Seed data included for physicians and default credentials.
+/// Phase 1 (multi-tenant): Tenant, TenantSettings, TenantSubscription,
+/// InvitationCode, UserRole, AssistantPhysicianLink added.
+/// TenantId (nullable) added to Physicians for tenant scoping.
 /// </summary>
 public class MuafaDbContext : DbContext
 {
     public MuafaDbContext(DbContextOptions<MuafaDbContext> options)
         : base(options) { }
 
+    // ── Phase 0 ───────────────────────────────────────────────────────────────
     public DbSet<Physician>           Physicians           { get; set; }
     public DbSet<PhysicianCredential> PhysicianCredentials { get; set; }
     public DbSet<Patient>             Patients             { get; set; }
     public DbSet<GenerationSession>   GenerationSessions   { get; set; }
     public DbSet<GeneratedArticle>    GeneratedArticles    { get; set; }
+
+    // ── Phase 1 — multi-tenant ────────────────────────────────────────────────
+    public DbSet<Tenant>                  Tenants                  { get; set; }
+    public DbSet<TenantSettings>          TenantSettings           { get; set; }
+    public DbSet<TenantSubscription>      TenantSubscriptions      { get; set; }
+    public DbSet<InvitationCode>          InvitationCodes          { get; set; }
+    public DbSet<UserRole>                UserRoles                { get; set; }
+    public DbSet<AssistantPhysicianLink>  AssistantPhysicianLinks  { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +104,85 @@ public class MuafaDbContext : DbContext
             entity.HasOne(e => e.GenerationSession)
                   .WithMany(s => s.GeneratedArticles)
                   .HasForeignKey(e => e.SessionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Physician — Phase 1: add nullable TenantId FK ─────────────────────
+        modelBuilder.Entity<Physician>(entity =>
+        {
+            entity.HasOne<Tenant>()
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── Tenant ─────────────────────────────────────────────────────────────
+        modelBuilder.Entity<Tenant>(entity =>
+        {
+            entity.HasKey(e => e.TenantId);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+        });
+
+        // ── TenantSettings (one-to-one with Tenant) ───────────────────────────
+        modelBuilder.Entity<TenantSettings>(entity =>
+        {
+            entity.HasKey(e => e.TenantId);
+            entity.Property(e => e.NotificationDelayHours).HasDefaultValue(2);
+            entity.Property(e => e.ChatEnabled).HasDefaultValue(false);
+            entity.Property(e => e.PatientChatWindowDays).HasDefaultValue(7);
+            entity.HasOne(e => e.Tenant)
+                  .WithOne(t => t.Settings)
+                  .HasForeignKey<TenantSettings>(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── TenantSubscription (one-to-many with Tenant) ──────────────────────
+        modelBuilder.Entity<TenantSubscription>(entity =>
+        {
+            entity.HasKey(e => e.SubscriptionId);
+            entity.Property(e => e.CasesUsed).HasDefaultValue(0);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.HasOne(e => e.Tenant)
+                  .WithMany(t => t.Subscriptions)
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── InvitationCode ─────────────────────────────────────────────────────
+        modelBuilder.Entity<InvitationCode>(entity =>
+        {
+            entity.HasKey(e => e.Code);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Tenant)
+                  .WithMany(t => t.InvitationCodes)
+                  .HasForeignKey(e => e.TenantId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── UserRole (composite PK: UserId + TenantId) ────────────────────────
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.TenantId });
+            entity.HasIndex(e => new { e.UserId, e.TenantId });
+            entity.HasOne(e => e.Tenant)
+                  .WithMany(t => t.UserRoles)
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── AssistantPhysicianLink ─────────────────────────────────────────────
+        modelBuilder.Entity<AssistantPhysicianLink>(entity =>
+        {
+            entity.HasKey(e => e.LinkId);
+            entity.HasIndex(e => new { e.AssistantId, e.TenantId });
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.HasOne(e => e.Tenant)
+                  .WithMany(t => t.AssistantPhysicianLinks)
+                  .HasForeignKey(e => e.TenantId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

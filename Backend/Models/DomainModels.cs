@@ -57,6 +57,12 @@ public class Physician
     public DateTime  CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime  UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Phase 1: nullable FK to Tenant. Null for seed/legacy physicians
+    /// created before multi-tenancy was introduced.
+    /// </summary>
+    public Guid? TenantId { get; set; }
+
     // Navigation properties
     public ICollection<Patient>           Patients           { get; set; } = [];
     public ICollection<GenerationSession> GenerationSessions { get; set; } = [];
