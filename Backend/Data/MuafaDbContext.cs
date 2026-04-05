@@ -8,6 +8,8 @@ namespace MuafaPlus.Data;
 /// Phase 1 (multi-tenant): Tenant, TenantSettings, TenantSubscription,
 /// InvitationCode, UserRole, AssistantPhysicianLink added.
 /// TenantId (nullable) added to Physicians for tenant scoping.
+/// Phase 2 Task 1: PatientAccess, Referral, PatientProfile, ReferralEngagement,
+/// ArticleEngagement, PatientFeedback, MessageLog added.
 /// </summary>
 public class MuafaDbContext : DbContext
 {
@@ -28,6 +30,15 @@ public class MuafaDbContext : DbContext
     public DbSet<InvitationCode>          InvitationCodes          { get; set; }
     public DbSet<UserRole>                UserRoles                { get; set; }
     public DbSet<AssistantPhysicianLink>  AssistantPhysicianLinks  { get; set; }
+
+    // ── Phase 2 — referral workflow ───────────────────────────────────────────
+    public DbSet<PatientAccess>       PatientAccesses      { get; set; }
+    public DbSet<Referral>            Referrals            { get; set; }
+    public DbSet<PatientProfile>      PatientProfiles      { get; set; }
+    public DbSet<ReferralEngagement>  ReferralEngagements  { get; set; }
+    public DbSet<ArticleEngagement>   ArticleEngagements   { get; set; }
+    public DbSet<PatientFeedback>     PatientFeedbacks     { get; set; }
+    public DbSet<MessageLog>          MessageLogs          { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -183,6 +194,108 @@ public class MuafaDbContext : DbContext
             entity.HasOne(e => e.Tenant)
                   .WithMany(t => t.AssistantPhysicianLinks)
                   .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 2 — PatientAccess ───────────────────────────────────────────
+        modelBuilder.Entity<PatientAccess>(entity =>
+        {
+            entity.HasKey(e => e.AccessId);
+            entity.HasIndex(e => new { e.PhoneNumber, e.TenantId }).IsUnique();
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Tenant)
+                  .WithMany(t => t.PatientAccesses)
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 2 — Referral ────────────────────────────────────────────────
+        modelBuilder.Entity<Referral>(entity =>
+        {
+            entity.HasKey(e => e.ReferralId);
+            entity.HasIndex(e => new { e.TenantId, e.PhysicianId });
+            entity.HasIndex(e => e.PatientAccessId);
+            entity.Property(e => e.Status)
+                  .HasConversion<string>();
+            entity.Property(e => e.WhatsAppDelivery).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Tenant)
+                  .WithMany(t => t.Referrals)
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.PatientAccess)
+                  .WithMany(pa => pa.Referrals)
+                  .HasForeignKey(e => e.PatientAccessId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── Phase 2 — PatientProfile (one-to-one with Referral) ───────────────
+        modelBuilder.Entity<PatientProfile>(entity =>
+        {
+            entity.HasKey(e => e.ProfileId);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Referral)
+                  .WithOne(r => r.Profile)
+                  .HasForeignKey<PatientProfile>(e => e.ReferralId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 2 — ReferralEngagement (one-to-one with Referral) ──────────
+        modelBuilder.Entity<ReferralEngagement>(entity =>
+        {
+            entity.HasKey(e => e.ReferralId);
+            entity.HasOne(e => e.Referral)
+                  .WithOne(r => r.Engagement)
+                  .HasForeignKey<ReferralEngagement>(e => e.ReferralId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 2 — ArticleEngagement ───────────────────────────────────────
+        modelBuilder.Entity<ArticleEngagement>(entity =>
+        {
+            entity.HasKey(e => e.EngagementId);
+            entity.HasIndex(e => e.ReferralId);
+            entity.Property(e => e.Reaction)
+                  .HasConversion<string>();
+            entity.Property(e => e.TimeOnArticleSeconds).HasDefaultValue(0);
+            entity.HasOne(e => e.Referral)
+                  .WithMany(r => r.ArticleEngagements)
+                  .HasForeignKey(e => e.ReferralId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 2 — PatientFeedback (one-to-one with Referral) ─────────────
+        modelBuilder.Entity<PatientFeedback>(entity =>
+        {
+            entity.HasKey(e => e.FeedbackId);
+            entity.HasIndex(e => e.ReferralId).IsUnique();
+            entity.Property(e => e.SubmittedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Referral)
+                  .WithOne(r => r.Feedback)
+                  .HasForeignKey<PatientFeedback>(e => e.ReferralId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 2 — MessageLog ──────────────────────────────────────────────
+        modelBuilder.Entity<MessageLog>(entity =>
+        {
+            entity.HasKey(e => e.MessageId);
+            entity.HasIndex(e => e.ReferralId);
+            entity.HasIndex(e => new { e.TenantId, e.CreatedAt });
+            entity.Property(e => e.MessageType)
+                  .HasConversion<string>();
+            entity.Property(e => e.DeliveryStatus)
+                  .HasConversion<string>()
+                  .HasDefaultValue(DeliveryStatus.Pending);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Tenant)
+                  .WithMany(t => t.MessageLogs)
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Referral)
+                  .WithMany(r => r.MessageLogs)
+                  .HasForeignKey(e => e.ReferralId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

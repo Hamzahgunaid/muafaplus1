@@ -275,3 +275,94 @@ public class LinkAssistantRequest
     [Required]
     public string PhysicianId { get; set; } = string.Empty;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2 — Referral workflow models
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class CreateReferralRequest
+{
+    /// <summary>
+    /// Accepted in the body as a fallback for tooling/tests only.
+    /// PhysicianId is always taken from the JWT claim in the controller (Rule 4).
+    /// </summary>
+    public string? PhysicianId { get; set; }
+
+    /// <summary>Patient's WhatsApp phone number. Format: +967XXXXXXXXX</summary>
+    [Required]
+    public string PatientPhone { get; set; } = string.Empty;
+
+    public bool WhatsAppDelivery { get; set; } = true;
+
+    /// <summary>Displayed according to tenant PatientNamePolicy.</summary>
+    public string? PatientName { get; set; }
+
+    [Required]
+    public string AgeGroup { get; set; } = string.Empty;
+
+    [Required]
+    public string PrimaryDiagnosis { get; set; } = string.Empty;
+
+    public string? Comorbidities       { get; set; }
+    public string? CurrentMedications  { get; set; }
+    public string? Allergies           { get; set; }
+    public string? MedicalRestrictions { get; set; }
+
+    /// <summary>Override tenant default notification delay in hours. Null = use tenant setting.</summary>
+    public int? NotificationDelayHours { get; set; }
+}
+
+public class ReferralEngagementResponse
+{
+    public DateTime? MessageSentAt       { get; set; }
+    public DateTime? AppOpenedAt         { get; set; }
+    public DateTime? SummaryViewedAt     { get; set; }
+    public DateTime? Stage2RequestedAt   { get; set; }
+    public DateTime? FeedbackSubmittedAt { get; set; }
+}
+
+public class ReferralResponse
+{
+    public Guid      ReferralId          { get; set; }
+    public string    Status              { get; set; } = string.Empty;
+    public string?   RiskLevel           { get; set; }
+    public string    PatientPhone        { get; set; } = string.Empty;
+    public bool      WhatsAppDelivery    { get; set; }
+    public DateTime? ScheduledDeliveryAt { get; set; }
+    public DateTime? DeliveredAt         { get; set; }
+    public DateTime  CreatedAt           { get; set; }
+    public string?   SessionId           { get; set; }
+
+    public ReferralEngagementResponse? Engagement { get; set; }
+}
+
+public class TrackEngagementRequest
+{
+    /// <summary>Accepted values: "app_opened", "summary_viewed", "stage2_requested".</summary>
+    [Required]
+    public string EventType { get; set; } = string.Empty;
+}
+
+public class TrackArticleEngagementRequest
+{
+    [Required]
+    public string ArticleId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Accepted values: "opened", "depth_25", "depth_50", "depth_75",
+    /// "completed", "like", "dislike".
+    /// </summary>
+    [Required]
+    public string EventType { get; set; } = string.Empty;
+
+    public int TimeOnArticleSeconds { get; set; } = 0;
+}
+
+public class PatientFeedbackRequest
+{
+    [Required]
+    public bool IsHelpful { get; set; }
+
+    [StringLength(1000)]
+    public string? Comment { get; set; }
+}

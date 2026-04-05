@@ -25,4 +25,9 @@ public class Tenant
     public ICollection<InvitationCode>       InvitationCodes        { get; set; } = [];
     public ICollection<UserRole>             UserRoles              { get; set; } = [];
     public ICollection<AssistantPhysicianLink> AssistantPhysicianLinks { get; set; } = [];
+
+    // Phase 2 navigation
+    public ICollection<PatientAccess> PatientAccesses { get; set; } = [];
+    public ICollection<Referral>      Referrals       { get; set; } = [];
+    public ICollection<MessageLog>    MessageLogs     { get; set; } = [];
 }
