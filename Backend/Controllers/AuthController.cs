@@ -1,5 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MuafaPlus.Data;
 using MuafaPlus.Models;
 using MuafaPlus.Services;
@@ -197,22 +201,83 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Patient login stub — Phase 2 will complete this when the PatientAccess
-    /// table is added. Returns 501 so the Flutter app can be built against a
-    /// real endpoint today.
+    /// Phase 2 Task 3: Patient login via phone number + 4-digit access code.
+    /// Issues a 30-day JWT with PatientAccessId, PhoneNumber, TenantId, Role=Patient claims.
+    /// Returns 401 with Arabic message if credentials are incorrect.
     /// </summary>
     [HttpPost("patient/login")]
     [Microsoft.AspNetCore.Authorization.AllowAnonymous]
-    [ProducesResponseType(typeof(ApiResponse<PatientLoginResponse>), StatusCodes.Status501NotImplemented)]
-    public ActionResult<ApiResponse<PatientLoginResponse>> PatientLogin(
+    [ProducesResponseType(typeof(ApiResponse<PatientLoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>),               StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<PatientLoginResponse>>> PatientLogin(
         [FromBody] PatientLoginRequest request)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new ApiResponse<PatientLoginResponse>
+        // Step 1: Validate credentials against PatientAccess table
+        var access = await _db.PatientAccesses
+            .FirstOrDefaultAsync(a => a.PhoneNumber == request.PhoneNumber
+                                   && a.AccessCode  == request.Code
+                                   && a.IsActive);
+
+        if (access == null)
         {
-            Success   = false,
-            Error     = "Patient authentication will be implemented in Phase 2 " +
-                        "when PatientAccess table is added",
-            ErrorType = "NotImplemented"
+            _logger.LogWarning("Patient login failed — phone:{Phone}", request.PhoneNumber);
+            return Unauthorized(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = "رقم الهاتف أو الرمز غير صحيح",
+                ErrorType = "InvalidCredentials"
+            });
+        }
+
+        // Step 2: Update last login timestamp
+        access.LastLoginAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        // Step 3: Generate patient JWT (30-day expiry — patients need longer sessions)
+        var jwtSecret = _config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret not configured");
+
+        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim("PatientAccessId", access.AccessId.ToString()),
+            new Claim("PhoneNumber",     access.PhoneNumber),
+            new Claim("TenantId",        access.TenantId.ToString()),
+            new Claim("Role",            "Patient"),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        var tokenDescriptor = new JwtSecurityToken(
+            issuer:             _config["Jwt:Issuer"]   ?? "muafaplus-api",
+            audience:           _config["Jwt:Audience"] ?? "muafaplus-ui",
+            claims:             claims,
+            notBefore:          DateTime.UtcNow,
+            expires:            DateTime.UtcNow.AddDays(30),
+            signingCredentials: creds
+        );
+
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+
+        // Step 4: Count referrals for this patient
+        var referralCount = await _db.Referrals
+            .CountAsync(r => r.PatientAccessId == access.AccessId);
+
+        _logger.LogInformation(
+            "Patient login success — accessId:{Id} phone:{Phone} referrals:{Count}",
+            access.AccessId, access.PhoneNumber, referralCount);
+
+        // Step 5: Return response
+        return Ok(new ApiResponse<PatientLoginResponse>
+        {
+            Success = true,
+            Data    = new PatientLoginResponse
+            {
+                Token         = tokenString,
+                PhoneNumber   = access.PhoneNumber,
+                ReferralCount = referralCount
+            }
         });
     }
 

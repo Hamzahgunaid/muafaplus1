@@ -350,12 +350,16 @@ public class TrackArticleEngagementRequest
 
     /// <summary>
     /// Accepted values: "opened", "depth_25", "depth_50", "depth_75",
-    /// "completed", "like", "dislike".
+    /// "completed", "like", "dislike", "time".
     /// </summary>
     [Required]
     public string EventType { get; set; } = string.Empty;
 
     public int TimeOnArticleSeconds { get; set; } = 0;
+
+    /// <summary>Required: the referral this article belongs to.</summary>
+    [Required]
+    public Guid ReferralId { get; set; }
 }
 
 public class PatientFeedbackRequest
@@ -365,4 +369,52 @@ public class PatientFeedbackRequest
 
     [StringLength(1000)]
     public string? Comment { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2 Task 3 — Engagement detail + article list response models
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class ReferralArticleResponse
+{
+    public string  ArticleId    { get; set; } = string.Empty;
+    public string  ArticleType  { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("content_ar")]
+    public string  ContentAr    { get; set; } = string.Empty;   // Rule 2 — never "content"
+
+    public string? CoverageCodes { get; set; }
+    public int     WordCount     { get; set; }
+    public DateTime CreatedAt   { get; set; }
+}
+
+public class ArticleEngagementResponse
+{
+    public string    ArticleId            { get; set; } = string.Empty;
+    public DateTime? OpenedAt             { get; set; }
+    public DateTime? Depth25At            { get; set; }
+    public DateTime? Depth50At            { get; set; }
+    public DateTime? Depth75At            { get; set; }
+    public DateTime? CompletedAt          { get; set; }
+    public int       TimeOnArticleSeconds { get; set; }
+    public string    Reaction             { get; set; } = "None";
+}
+
+public class PatientFeedbackResponse
+{
+    public bool      IsHelpful    { get; set; }
+    public string?   Comment      { get; set; }
+    public DateTime  SubmittedAt  { get; set; }
+}
+
+public class ReferralEngagementDetailResponse
+{
+    public Guid       ReferralId   { get; set; }
+    public string     Status       { get; set; } = string.Empty;
+    public string?    RiskLevel    { get; set; }
+    public string     PatientPhone { get; set; } = string.Empty;
+
+    public ReferralEngagementResponse?      Timeline  { get; set; }
+    public List<ArticleEngagementResponse>  Articles  { get; set; } = [];
+    public PatientFeedbackResponse?         Feedback  { get; set; }
 }

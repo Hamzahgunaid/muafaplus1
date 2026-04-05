@@ -7,21 +7,25 @@ namespace MuafaPlus.Services;
 
 /// <summary>
 /// Phase 2: Orchestrates referral creation, WhatsApp delivery scheduling,
-/// and engagement tracking. DeliverReferralAsync is a public Hangfire job.
+/// and engagement tracking.
+/// DeliverReferralAsync and TriggerPatientStage2JobAsync are public Hangfire jobs.
 /// </summary>
 public class ReferralService
 {
-    private readonly MuafaDbContext          _db;
-    private readonly WhatsAppService         _whatsApp;
+    private readonly MuafaDbContext           _db;
+    private readonly WhatsAppService          _whatsApp;
+    private readonly WorkflowService          _workflow;
     private readonly ILogger<ReferralService> _logger;
 
     public ReferralService(
-        MuafaDbContext           db,
-        WhatsAppService          whatsApp,
-        ILogger<ReferralService> logger)
+        MuafaDbContext            db,
+        WhatsAppService           whatsApp,
+        WorkflowService           workflow,
+        ILogger<ReferralService>  logger)
     {
         _db       = db;
         _whatsApp = whatsApp;
+        _workflow = workflow;
         _logger   = logger;
     }
 
@@ -317,6 +321,232 @@ public class ReferralService
 
         await _db.SaveChangesAsync();
         return (true, null);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Phase 2 Task 3 — Patient-facing queries
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public async Task<List<ReferralResponse>> GetReferralsForPatientAsync(Guid patientAccessId)
+    {
+        var referrals = await _db.Referrals
+            .Include(r => r.PatientAccess)
+            .Include(r => r.Engagement)
+            .Where(r => r.PatientAccessId == patientAccessId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        return referrals
+            .Select(r => MapToResponse(r, r.PatientAccess?.PhoneNumber ?? string.Empty, r.Engagement))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Returns articles for a referral. Verifies the caller owns the referral either
+    /// as the patient (patientAccessId) or the physician (physicianId).
+    /// Also sets SummaryViewedAt on first load.
+    /// </summary>
+    public async Task<(List<ReferralArticleResponse>? Articles, string? Error)>
+        GetArticlesForReferralAsync(Guid referralId, Guid? patientAccessId, string? physicianId)
+    {
+        var referral = await _db.Referrals
+            .Include(r => r.Engagement)
+            .FirstOrDefaultAsync(r => r.ReferralId == referralId);
+
+        if (referral == null)
+            return (null, "Referral not found");
+
+        // Verify ownership
+        var isPatient   = patientAccessId.HasValue && referral.PatientAccessId == patientAccessId;
+        var isPhysician = !string.IsNullOrEmpty(physicianId)  && referral.PhysicianId == physicianId;
+
+        if (!isPatient && !isPhysician)
+            return (null, "Referral not found");
+
+        if (string.IsNullOrEmpty(referral.SessionId))
+        {
+            return ([], null);   // empty list; caller checks Metadata for the message
+        }
+
+        var articles = await _db.GeneratedArticles
+            .Where(a => a.SessionId == referral.SessionId)
+            .OrderBy(a => a.CreatedAt)
+            .ToListAsync();
+
+        // Set SummaryViewedAt on first article load by patient
+        if (isPatient && referral.Engagement != null && referral.Engagement.SummaryViewedAt == null)
+        {
+            referral.Engagement.SummaryViewedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        var result = articles.Select(a => new ReferralArticleResponse
+        {
+            ArticleId    = a.ArticleId,
+            ArticleType  = a.ArticleType,
+            ContentAr    = a.Content,
+            CoverageCodes = a.CoverageCodes,
+            WordCount    = a.WordCount,
+            CreatedAt    = a.CreatedAt
+        }).ToList();
+
+        return (result, null);
+    }
+
+    /// <summary>
+    /// Validates referral status and queues patient-triggered Stage 2.
+    /// Returns (true, null) on success, (false, errorMessage) on validation failure.
+    /// </summary>
+    public async Task<(bool success, string? error, int statusCode)> RequestPatientStage2Async(
+        Guid referralId, Guid patientAccessId)
+    {
+        var referral = await _db.Referrals
+            .Include(r => r.Engagement)
+            .FirstOrDefaultAsync(r => r.ReferralId    == referralId
+                                   && r.PatientAccessId == patientAccessId);
+
+        if (referral == null)
+            return (false, "Referral not found", 404);
+
+        if (referral.Status != ReferralStatus.Stage1Complete &&
+            referral.Status != ReferralStatus.Stage1Delivered)
+            return (false, "Stage 1 must complete before requesting Stage 2", 400);
+
+        if (referral.Engagement?.Stage2RequestedAt != null)
+            return (false, "Stage 2 already requested", 409);
+
+        var now = DateTime.UtcNow;
+
+        referral.Status = ReferralStatus.Stage2Requested;
+
+        if (referral.Engagement != null)
+            referral.Engagement.Stage2RequestedAt = now;
+        else
+            _db.ReferralEngagements.Add(new ReferralEngagement
+            {
+                ReferralId       = referralId,
+                Stage2RequestedAt = now
+            });
+
+        await _db.SaveChangesAsync();
+
+        // Queue Hangfire job — returns immediately (Rule 3)
+        BackgroundJob.Enqueue<ReferralService>(
+            svc => svc.TriggerPatientStage2JobAsync(referralId));
+
+        _logger.LogInformation(
+            "Stage 2 requested by patient — referral:{ReferralId}", referralId);
+
+        return (true, null, 202);
+    }
+
+    /// <summary>
+    /// Hangfire job: runs the complete workflow (Stage 1 + Stage 2) using patient
+    /// profile data and links the new session back to the referral.
+    /// Stage 1 is re-run to obtain article outlines needed for Stage 2.
+    /// Phase 2 Task 9 (ArticleLibrary) will serve Stage 1 from cache, eliminating
+    /// the duplicate API call.
+    /// </summary>
+    [AutomaticRetry(Attempts = 3)]
+    public async Task TriggerPatientStage2JobAsync(Guid referralId)
+    {
+        _logger.LogInformation("TriggerPatientStage2 starting — referral:{ReferralId}", referralId);
+
+        var referral = await _db.Referrals
+            .Include(r => r.Profile)
+            .FirstOrDefaultAsync(r => r.ReferralId == referralId);
+
+        if (referral == null || referral.Profile == null)
+        {
+            _logger.LogWarning("TriggerPatientStage2: referral or profile not found — {ReferralId}", referralId);
+            return;
+        }
+
+        var patientData = new PatientData
+        {
+            PrimaryDiagnosis    = referral.Profile.PrimaryDiagnosis,
+            AgeGroup            = referral.Profile.AgeGroup,
+            Comorbidities       = referral.Profile.Comorbidities       ?? string.Empty,
+            CurrentMedications  = referral.Profile.CurrentMedications  ?? string.Empty,
+            Allergies           = referral.Profile.Allergies           ?? string.Empty,
+            MedicalRestrictions = referral.Profile.MedicalRestrictions ?? string.Empty
+        };
+
+        // Runs Stage 1 (for article outlines) then immediately enqueues Stage 2 jobs
+        var result = await _workflow.ExecuteCompleteWorkflowAsync(
+            referral.PhysicianId, patientData);
+
+        if (result.Success)
+        {
+            referral.SessionId = result.SessionId;
+            referral.Status    = ReferralStatus.Stage2Complete;
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "TriggerPatientStage2 complete — referral:{ReferralId} session:{SessionId}",
+                referralId, result.SessionId);
+        }
+        else
+        {
+            _logger.LogError(
+                "TriggerPatientStage2 failed — referral:{ReferralId} error:{Error}",
+                referralId, result.ErrorMessage);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Phase 2 Task 3 — Provider engagement detail view
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public async Task<ReferralEngagementDetailResponse?> GetEngagementDetailAsync(
+        Guid referralId, string physicianId)
+    {
+        var referral = await _db.Referrals
+            .Include(r => r.PatientAccess)
+            .Include(r => r.Engagement)
+            .Include(r => r.ArticleEngagements)
+            .Include(r => r.Feedback)
+            .FirstOrDefaultAsync(r => r.ReferralId == referralId
+                                   && r.PhysicianId == physicianId);
+
+        if (referral == null)
+            return null;
+
+        return new ReferralEngagementDetailResponse
+        {
+            ReferralId   = referral.ReferralId,
+            Status       = referral.Status.ToString(),
+            RiskLevel    = referral.RiskLevel,
+            PatientPhone = referral.PatientAccess?.PhoneNumber ?? string.Empty,
+
+            Timeline = referral.Engagement == null ? null : new ReferralEngagementResponse
+            {
+                MessageSentAt       = referral.Engagement.MessageSentAt,
+                AppOpenedAt         = referral.Engagement.AppOpenedAt,
+                SummaryViewedAt     = referral.Engagement.SummaryViewedAt,
+                Stage2RequestedAt   = referral.Engagement.Stage2RequestedAt,
+                FeedbackSubmittedAt = referral.Engagement.FeedbackSubmittedAt
+            },
+
+            Articles = referral.ArticleEngagements.Select(ae => new ArticleEngagementResponse
+            {
+                ArticleId            = ae.ArticleId,
+                OpenedAt             = ae.OpenedAt,
+                Depth25At            = ae.Depth25At,
+                Depth50At            = ae.Depth50At,
+                Depth75At            = ae.Depth75At,
+                CompletedAt          = ae.CompletedAt,
+                TimeOnArticleSeconds = ae.TimeOnArticleSeconds,
+                Reaction             = ae.Reaction.ToString()
+            }).ToList(),
+
+            Feedback = referral.Feedback == null ? null : new PatientFeedbackResponse
+            {
+                IsHelpful   = referral.Feedback.IsHelpful,
+                Comment     = referral.Feedback.Comment,
+                SubmittedAt = referral.Feedback.SubmittedAt
+            }
+        };
     }
 
     // ─────────────────────────────────────────────────────────────────────────

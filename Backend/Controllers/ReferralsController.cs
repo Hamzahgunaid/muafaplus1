@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MuafaPlus.Models;
@@ -7,8 +8,10 @@ namespace MuafaPlus.Controllers;
 
 /// <summary>
 /// Phase 2: Referral management endpoints.
-/// All routes require a valid JWT (Rule 6) except the feedback endpoint,
-/// which is AllowAnonymous until patient auth is implemented (Phase 2 Task 3).
+/// All routes require a valid JWT (Rule 6).
+/// Patient JWT uses "Role"="Patient" and "PatientAccessId" claims.
+/// Provider JWT uses ClaimTypes.NameIdentifier for PhysicianId.
+/// Feedback endpoint moved to EngagementController (Phase 2 Task 3).
 /// </summary>
 [ApiController]
 [Route("api/v1/referrals")]
@@ -33,8 +36,7 @@ public class ReferralsController : ControllerBase
 
     /// <summary>
     /// Creates a new referral and schedules WhatsApp delivery.
-    /// Returns 202 Accepted — Stage 1 generation is triggered separately
-    /// and linked back to this referral in Phase 2 Task 3.
+    /// Returns 202 Accepted.
     ///
     /// TODO Phase 2 Task 3: After creating referral, trigger Stage 1 generation
     /// and link the SessionId back to this referral.
@@ -44,7 +46,6 @@ public class ReferralsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<ReferralResponse>), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ApiResponse<object>),           StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>),           StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<ReferralResponse>>> Create(
         [FromBody] CreateReferralRequest request)
     {
@@ -60,15 +61,12 @@ public class ReferralsController : ControllerBase
                 ErrorType = "MissingPhysicianClaim"
             });
 
-        // TenantId from JWT when tenant-aware login is introduced in Phase 3.
-        // For now physicians are not yet scoped to a single tenant, so use Empty.
         var tenantId = Guid.TryParse(
             User.FindFirst("TenantId")?.Value, out var tid) ? tid : Guid.Empty;
 
         try
         {
             var referral = await _referrals.CreateReferralAsync(request, physicianId, tenantId);
-
             return Accepted(new ApiResponse<ReferralResponse> { Success = true, Data = referral });
         }
         catch (InvalidOperationException ex)
@@ -98,12 +96,26 @@ public class ReferralsController : ControllerBase
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Lists referrals for the authenticated physician, newest first.
+    /// Lists referrals. Behaviour depends on role:
+    ///   Patient  → returns referrals for this PatientAccessId (from JWT)
+    ///   Provider → returns referrals owned by this PhysicianId (existing behaviour)
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<List<ReferralResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<ReferralResponse>>>> GetAll()
     {
+        var role      = User.FindFirst("Role")?.Value;
+        bool isPatient = role == "Patient";
+
+        if (isPatient)
+        {
+            var patientAccessId = Guid.TryParse(
+                User.FindFirst("PatientAccessId")?.Value, out var paid) ? paid : Guid.Empty;
+
+            var referrals = await _referrals.GetReferralsForPatientAsync(patientAccessId);
+            return Ok(new ApiResponse<List<ReferralResponse>> { Success = true, Data = referrals });
+        }
+
         var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
         if (string.IsNullOrEmpty(physicianId))
             return Unauthorized(new ApiResponse<object>
@@ -113,9 +125,8 @@ public class ReferralsController : ControllerBase
                 ErrorType = "MissingPhysicianClaim"
             });
 
-        var referrals = await _referrals.GetReferralsForPhysicianAsync(physicianId);
-
-        return Ok(new ApiResponse<List<ReferralResponse>> { Success = true, Data = referrals });
+        var providerReferrals = await _referrals.GetReferralsForPhysicianAsync(physicianId);
+        return Ok(new ApiResponse<List<ReferralResponse>> { Success = true, Data = providerReferrals });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -153,29 +164,39 @@ public class ReferralsController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // POST /api/v1/referrals/{id}/feedback
+    // GET /api/v1/referrals/{id}/articles
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Submits patient feedback for a referral.
-    /// AllowAnonymous — patient JWT auth implemented in Phase 2 Task 3.
-    /// Returns 409 Conflict if feedback has already been submitted.
+    /// Returns available articles for a referral progressively.
+    /// Accessible by the patient (PatientAccessId matches) or the owning physician.
+    /// Sets SummaryViewedAt on first patient load.
+    /// If SessionId is not yet linked, returns an empty list with a metadata message.
     /// </summary>
-    [HttpPost("{id:guid}/feedback")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(ApiResponse<bool>),   StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<ApiResponse<bool>>> SubmitFeedback(
-        Guid id,
-        [FromBody] PatientFeedbackRequest request)
+    [HttpGet("{id:guid}/articles")]
+    [ProducesResponseType(typeof(ApiResponse<List<ReferralArticleResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>),                        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<List<ReferralArticleResponse>>>> GetArticles(Guid id)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ValidationErrorResponse());
+        var role = User.FindFirst("Role")?.Value;
 
-        var (success, error) = await _referrals.SubmitFeedbackAsync(id, request);
+        Guid?   patientAccessId = null;
+        string? physicianId     = null;
 
-        if (!success && error == "Referral not found")
+        if (role == "Patient")
+        {
+            if (Guid.TryParse(User.FindFirst("PatientAccessId")?.Value, out var paid))
+                patientAccessId = paid;
+        }
+        else
+        {
+            physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        }
+
+        var (articles, error) = await _referrals.GetArticlesForReferralAsync(
+            id, patientAccessId, physicianId);
+
+        if (error == "Referral not found")
             return NotFound(new ApiResponse<object>
             {
                 Success   = false,
@@ -183,15 +204,102 @@ public class ReferralsController : ControllerBase
                 ErrorType = "NotFound"
             });
 
-        if (!success && error == "Conflict")
-            return Conflict(new ApiResponse<object>
+        var metadata = articles?.Count == 0
+            ? new Dictionary<string, object> { ["message"] = "Content not yet generated" }
+            : null;
+
+        return Ok(new ApiResponse<List<ReferralArticleResponse>>
+        {
+            Success  = true,
+            Data     = articles ?? [],
+            Metadata = metadata
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // POST /api/v1/referrals/{id}/stage2
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Patient triggers Stage 2 generation on demand.
+    /// Requires Role=Patient JWT claim — providers cannot trigger patient Stage 2.
+    /// Returns 202 Accepted immediately; generation runs in Hangfire (Rule 3).
+    /// </summary>
+    [HttpPost("{id:guid}/stage2")]
+    [ProducesResponseType(typeof(ApiResponse<bool>),   StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<bool>>> TriggerStage2(Guid id)
+    {
+        var role = User.FindFirst("Role")?.Value;
+        if (role != "Patient")
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<object>
             {
                 Success   = false,
-                Error     = "Feedback has already been submitted for this referral.",
-                ErrorType = "Conflict"
+                Error     = "This endpoint is for patients only.",
+                ErrorType = "Forbidden"
             });
 
-        return Ok(new ApiResponse<bool> { Success = true, Data = true });
+        if (!Guid.TryParse(User.FindFirst("PatientAccessId")?.Value, out var patientAccessId))
+            return Unauthorized(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = "Invalid patient token.",
+                ErrorType = "InvalidToken"
+            });
+
+        var (success, error, statusCode) =
+            await _referrals.RequestPatientStage2Async(id, patientAccessId);
+
+        if (!success)
+            return statusCode switch
+            {
+                404 => NotFound(new ApiResponse<object>
+                    { Success = false, Error = error, ErrorType = "NotFound" }),
+                409 => Conflict(new ApiResponse<object>
+                    { Success = false, Error = error, ErrorType = "Conflict" }),
+                _   => BadRequest(new ApiResponse<object>
+                    { Success = false, Error = error, ErrorType = "BusinessRuleViolation" })
+            };
+
+        return Accepted(new ApiResponse<bool> { Success = true, Data = true });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/v1/referrals/{id}/engagement
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the complete engagement timeline for a referral.
+    /// Provider (physician) role only — patients use GET /referrals instead.
+    /// Returns 404 if not found or not owned by the current physician.
+    /// </summary>
+    [HttpGet("{id:guid}/engagement")]
+    [ProducesResponseType(typeof(ApiResponse<ReferralEngagementDetailResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>),                           StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<ReferralEngagementDetailResponse>>> GetEngagementDetail(
+        Guid id)
+    {
+        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+            return Unauthorized(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = "لم يتم التحقق من هوية الطبيب.",
+                ErrorType = "MissingPhysicianClaim"
+            });
+
+        var detail = await _referrals.GetEngagementDetailAsync(id, physicianId);
+        if (detail == null)
+            return NotFound(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = $"Referral {id} not found.",
+                ErrorType = "NotFound"
+            });
+
+        return Ok(new ApiResponse<ReferralEngagementDetailResponse> { Success = true, Data = detail });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
