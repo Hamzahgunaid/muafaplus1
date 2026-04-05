@@ -193,6 +193,20 @@ public class MuafaDbContext : DbContext
             new Physician { PhysicianId = "PHY003", FullName = "Dr. Mohammed Al-Zubairi", Specialty = "Endocrinology",  Email = "mohammed.z@diabetes.ye",   Phone = "+967-1-456789", LicenseNumber = "YE-ENDO-2020-103", Institution = "Diabetes Center",          City = "Sana'a", Country = "Yemen", IsActive = true, CreatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc), UpdatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc) }
         );
 
+        // Seed test invitation code — allows testing validate-code without generating one first
+        modelBuilder.Entity<InvitationCode>().HasData(
+            new InvitationCode
+            {
+                Code            = "PH-TEST01",
+                TenantId        = null,
+                Role            = TenantRole.Physician,
+                CreatedByUserId = "SYSTEM",
+                IsActive        = true,
+                ExpiresAt       = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAt       = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            }
+        );
+
         // Seed default credentials — real BCrypt hash of "MuafaPlus2025!" at cost 12
         // Generated via BCrypt.Net.BCrypt.HashPassword("MuafaPlus2025!", workFactor: 12)
         // All accounts require password reset on first login (MustResetOnNextLogin = true)

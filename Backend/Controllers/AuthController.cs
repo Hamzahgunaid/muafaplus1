@@ -20,17 +20,20 @@ public class AuthController : ControllerBase
     private readonly JwtService     _jwt;
     private readonly ILogger<AuthController> _logger;
     private readonly IConfiguration _config;
+    private readonly InvitationCodeService _invitationCodes;
 
     public AuthController(
         MuafaDbContext db,
         JwtService jwt,
         IConfiguration config,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        InvitationCodeService invitationCodes)
     {
-        _db     = db;
-        _jwt    = jwt;
-        _config = config;
-        _logger = logger;
+        _db              = db;
+        _jwt             = jwt;
+        _config          = config;
+        _logger          = logger;
+        _invitationCodes = invitationCodes;
     }
 
     /// <summary>
@@ -166,6 +169,94 @@ public class AuthController : ControllerBase
             Success = true,
             Metadata = new Dictionary<string, object> { ["physician_id"] = physicianId }
         });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Phase 1 — Invitation code endpoints
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Validates an invitation code. Always returns HTTP 200 — never 4xx —
+    /// so the frontend can display IsValid=false messages gracefully.
+    /// </summary>
+    [HttpPost("validate-code")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [ProducesResponseType(typeof(ValidateInvitationCodeResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ValidateInvitationCodeResponse>> ValidateCode(
+        [FromBody] ValidateInvitationCodeRequest request)
+    {
+        if (!ModelState.IsValid)
+            return Ok(new ValidateInvitationCodeResponse
+            {
+                IsValid = false,
+                Message = "Invalid request."
+            });
+
+        var result = await _invitationCodes.ValidateCodeAsync(request.Code);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Patient login stub — Phase 2 will complete this when the PatientAccess
+    /// table is added. Returns 501 so the Flutter app can be built against a
+    /// real endpoint today.
+    /// </summary>
+    [HttpPost("patient/login")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<PatientLoginResponse>), StatusCodes.Status501NotImplemented)]
+    public ActionResult<ApiResponse<PatientLoginResponse>> PatientLogin(
+        [FromBody] PatientLoginRequest request)
+    {
+        return StatusCode(StatusCodes.Status501NotImplemented, new ApiResponse<PatientLoginResponse>
+        {
+            Success   = false,
+            Error     = "Patient authentication will be implemented in Phase 2 " +
+                        "when PatientAccess table is added",
+            ErrorType = "NotImplemented"
+        });
+    }
+
+    /// <summary>
+    /// Generates a new invitation code for the given role.
+    /// Requires a valid physician JWT.
+    /// </summary>
+    [HttpPost("invitation-codes/generate")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    [ProducesResponseType(typeof(ApiResponse<GenerateInvitationCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<GenerateInvitationCodeResponse>>> GenerateInvitationCode(
+        [FromBody] GenerateInvitationCodeRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false, Error = "Validation failed.",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["errors"] = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList()
+                }
+            });
+
+        var userId = User.FindFirst(ClaimNames.PhysicianId)?.Value ?? string.Empty;
+
+        try
+        {
+            var result = await _invitationCodes.GenerateCodeAsync(request, userId);
+            _logger.LogInformation(
+                "Invitation code generated — {Code} by physician:{UserId}", result.Code, userId);
+            return Ok(new ApiResponse<GenerateInvitationCodeResponse> { Success = true, Data = result });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate invitation code");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false, Error = "Failed to generate invitation code.", ErrorType = ex.GetType().Name
+            });
+        }
     }
 
     /// <summary>

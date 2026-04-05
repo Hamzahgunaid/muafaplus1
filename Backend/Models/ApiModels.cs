@@ -142,3 +142,53 @@ public class GenerateContentRequest
 
     public bool GenerateAllArticles { get; set; } = true;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1 — Invitation code models
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class ValidateInvitationCodeRequest
+{
+    [Required]
+    public string Code { get; set; } = string.Empty;
+}
+
+public class ValidateInvitationCodeResponse
+{
+    public bool    IsValid    { get; set; }
+    public string  Role       { get; set; } = string.Empty;
+    public Guid?   TenantId   { get; set; }
+    public string? TenantName { get; set; }
+    public string  Message    { get; set; } = string.Empty;
+}
+
+public class PatientLoginRequest
+{
+    [Required]
+    public string PhoneNumber { get; set; } = string.Empty;  // format: +967XXXXXXXXX
+
+    [Required]
+    public string Code { get; set; } = string.Empty;         // 4-digit referral code
+}
+
+public class PatientLoginResponse
+{
+    public string Token         { get; set; } = string.Empty;
+    public string PhoneNumber   { get; set; } = string.Empty;
+    public int    ReferralCount { get; set; }
+}
+
+public class GenerateInvitationCodeRequest
+{
+    public Guid?      TenantId     { get; set; }         // null for SuperAdmin codes
+    public TenantRole Role         { get; set; }
+    public int        ExpiresInDays { get; set; } = 30;
+}
+
+public class GenerateInvitationCodeResponse
+{
+    public string    Code      { get; set; } = string.Empty;
+    public string    Role      { get; set; } = string.Empty;
+    public DateTime  ExpiresAt { get; set; }
+    public Guid?     TenantId  { get; set; }
+}
