@@ -40,6 +40,9 @@ public class MuafaDbContext : DbContext
     public DbSet<PatientFeedback>     PatientFeedbacks     { get; set; }
     public DbSet<MessageLog>          MessageLogs          { get; set; }
 
+    // ── Phase 2 Task 4 — Layer 1 cost reduction ───────────────────────────────
+    public DbSet<ArticleLibrary>      ArticleLibrary       { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -297,6 +300,17 @@ public class MuafaDbContext : DbContext
                   .WithMany(r => r.MessageLogs)
                   .HasForeignKey(e => e.ReferralId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 2 Task 4 — ArticleLibrary ──────────────────────────────────
+        modelBuilder.Entity<ArticleLibrary>(entity =>
+        {
+            entity.HasKey(e => e.LibraryId);
+            entity.ToTable("ArticleLibrary");
+            entity.HasIndex(e => e.ProfileHash).IsUnique();
+            entity.HasIndex(e => e.TenantId);
+            entity.Property(e => e.HitCount).HasDefaultValue(0);
+            entity.Property(e => e.FirstGeneratedAt).HasDefaultValueSql("NOW()");
         });
 
         // ── Seed physicians ────────────────────────────────────────────────────

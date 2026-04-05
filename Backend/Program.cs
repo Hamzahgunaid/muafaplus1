@@ -96,6 +96,8 @@ try
 
     builder.Services.AddSingleton<PromptBuilder>();
     builder.Services.AddSingleton<RiskCalculatorService>();
+    builder.Services.AddSingleton<ProfileHashService>();
+    builder.Services.AddScoped<ArticleLibraryService>();
     builder.Services.AddScoped<JwtService>();
     builder.Services.AddScoped<MuafaApiClient>();
     builder.Services.AddScoped<WorkflowService>();

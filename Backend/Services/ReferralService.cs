@@ -15,18 +15,21 @@ public class ReferralService
     private readonly MuafaDbContext           _db;
     private readonly WhatsAppService          _whatsApp;
     private readonly WorkflowService          _workflow;
+    private readonly ProfileHashService       _profileHash;
     private readonly ILogger<ReferralService> _logger;
 
     public ReferralService(
         MuafaDbContext            db,
         WhatsAppService           whatsApp,
         WorkflowService           workflow,
+        ProfileHashService        profileHash,
         ILogger<ReferralService>  logger)
     {
-        _db       = db;
-        _whatsApp = whatsApp;
-        _workflow = workflow;
-        _logger   = logger;
+        _db          = db;
+        _whatsApp    = whatsApp;
+        _workflow    = workflow;
+        _profileHash = profileHash;
+        _logger      = logger;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -90,18 +93,21 @@ public class ReferralService
         await _db.SaveChangesAsync();
 
         // ── Step 3: Create PatientProfile ─────────────────────────────────────
+        // Phase 2 Task 4: compute SHA-256 hash at creation time for ArticleLibrary lookups.
+        var profileHash = _profileHash.GenerateHash(request);
+
         var profile = new PatientProfile
         {
-            ReferralId         = Guid.Empty,   // set after referral is saved below
-            PrimaryDiagnosis   = request.PrimaryDiagnosis,
-            AgeGroup           = request.AgeGroup,
-            Comorbidities      = request.Comorbidities,
-            CurrentMedications = request.CurrentMedications,
-            Allergies          = request.Allergies,
+            ReferralId          = Guid.Empty,   // set after referral is saved below
+            PrimaryDiagnosis    = request.PrimaryDiagnosis,
+            AgeGroup            = request.AgeGroup,
+            Comorbidities       = request.Comorbidities,
+            CurrentMedications  = request.CurrentMedications,
+            Allergies           = request.Allergies,
             MedicalRestrictions = request.MedicalRestrictions,
-            PatientName        = request.PatientName,
-            ProfileHash        = null,   // Phase 2 Task 4 adds SHA-256 hashing
-            CreatedAt          = DateTime.UtcNow
+            PatientName         = request.PatientName,
+            ProfileHash         = profileHash,
+            CreatedAt           = DateTime.UtcNow
         };
 
         // ── Step 4: Create Referral ───────────────────────────────────────────
