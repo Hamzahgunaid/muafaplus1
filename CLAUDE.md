@@ -5,7 +5,7 @@ for post-diagnosis patient care in Yemen. Physicians refer patients and the
 system generates personalised Arabic health education articles via Claude AI,
 delivered through WhatsApp and a Flutter mobile app.
 
-## Current State — Phase 1 Complete
+## Current State — Phase 2 Complete
 Production is LIVE:
 - Frontend: https://muafaplus1.vercel.app
 - Backend: https://muafaplus1-production.up.railway.app
@@ -42,7 +42,7 @@ Test accounts:
 
 Test invitation code: PH-TEST01 (Physician role, expires 2027-01-01)
 
-## Database — 11 Tables (Phase 1 complete)
+## Database — 19 Tables (Phase 2 complete)
 
 ### Original tables (Phase 0)
 - Physicians — seed data: PHY001, PHY002, PHY003
@@ -59,6 +59,16 @@ Test invitation code: PH-TEST01 (Physician role, expires 2027-01-01)
 - UserRoles — role assignments per user per tenant
 - AssistantPhysicianLinks — many-to-many assistant-physician linking
 
+### New tables (Phase 2)
+- PatientAccess — phone number + 4-digit code authentication
+- Referrals — core referral workflow record
+- PatientProfiles — clinical profile per referral (with SHA-256 hash)
+- ReferralEngagement — patient journey milestones
+- ArticleEngagement — per-article scroll depth + reaction
+- PatientFeedback — patient satisfaction per referral
+- MessageLog — WhatsApp/SMS delivery audit log
+- ArticleLibrary — Layer 1 cost reduction (SHA-256 exact-match cache)
+
 ## API Endpoints — Current State
 
 ### Authentication (AuthController)
@@ -67,7 +77,7 @@ GET  /api/v1/auth/me — current user profile [Authorize]
 POST /api/v1/auth/change-password — [Authorize]
 POST /api/v1/auth/validate-code — validate invitation code [AllowAnonymous]
   → always returns 200, IsValid=false for bad codes, never 4xx
-POST /api/v1/auth/patient/login — STUB 501, Phase 2 [AllowAnonymous]
+POST /api/v1/auth/patient/login — phone + 4-digit code, 30-day JWT [AllowAnonymous]
 POST /api/v1/auth/invitation-codes/generate — [Authorize]
 
 ### Tenants (TenantsController)
@@ -78,6 +88,19 @@ GET  /api/v1/tenants/{id}/settings [Authorize]
 PUT  /api/v1/tenants/{id}/settings — partial update [Authorize]
 GET  /api/v1/tenants/{id}/subscription [Authorize]
 POST /api/v1/tenants/{id}/assistant-links — 409 if already linked [Authorize]
+
+### Referrals (ReferralsController)
+POST /api/v1/referrals — create referral, 202 Accepted [Authorize]
+GET  /api/v1/referrals — list (Patient: by PatientAccessId; Provider: by PhysicianId) [Authorize]
+GET  /api/v1/referrals/{id} — single referral + engagement [Authorize]
+GET  /api/v1/referrals/{id}/articles — progressive article loading [Authorize]
+POST /api/v1/referrals/{id}/stage2 — patient triggers Stage 2, 202 Accepted [Authorize]
+GET  /api/v1/referrals/{id}/engagement — provider engagement detail view [Authorize]
+
+### Engagement (EngagementController)
+POST /api/v1/referrals/{id}/engagement — track app_opened/summary_viewed/stage2_requested [Authorize]
+POST /api/v1/articles/{articleId}/engagement — track scroll depth + reaction [Authorize]
+POST /api/v1/referrals/{id}/feedback — patient feedback, 409 if duplicate [Authorize]
 
 ### Content Generation (ContentGenerationController)
 POST /api/v1/ContentGeneration/generate/complete [Authorize]
@@ -107,10 +130,14 @@ Login returns ApiResponse<T> wrapper. Token is at data.data.token:
 Backend/Services/InvitationCodeService.cs — validate + generate codes
 Backend/Services/TenantService.cs — tenant CRUD + subscription + linking
 Backend/Services/RiskCalculatorService.cs — 5-step C# risk algorithm
-Backend/Services/WorkflowService.cs — Stage 1 + Stage 2 orchestration
+Backend/Services/WorkflowService.cs — Stage 1 + Stage 2 orchestration + ArticleLibrary check
 Backend/Services/GenerationJobService.cs — Hangfire Stage 2 jobs
 Backend/Services/MuafaApiClient.cs — Claude API calls with prompt caching
 Backend/Services/PromptBuilder.cs — system prompt assembly
+Backend/Services/WhatsAppService.cs — Meta Cloud API integration (TestMode active)
+Backend/Services/ReferralService.cs — referral creation + Hangfire scheduled delivery
+Backend/Services/ProfileHashService.cs — SHA-256 canonical profile hashing
+Backend/Services/ArticleLibraryService.cs — Layer 1 cost reduction (LIBRARY HIT/MISS logging)
 
 ## Key model files
 Backend/Models/Entities/Tenant.cs
@@ -120,21 +147,38 @@ Backend/Models/Entities/InvitationCode.cs
 Backend/Models/Entities/UserRole.cs
 Backend/Models/Entities/AssistantPhysicianLink.cs
 Backend/Models/Entities/TenantRole.cs (shared enum)
+Backend/Models/Entities/Referral.cs
+Backend/Models/Entities/PatientAccess.cs
+Backend/Models/Entities/ArticleLibrary.cs
 Backend/Models/ApiModels.cs — all request/response DTOs
 Backend/Data/MuafaDbContext.cs — EF Core context + all DbSets
+Backend/Controllers/ReferralsController.cs
+Backend/Controllers/EngagementController.cs
 
-## Phase 2 Target — Referral Workflow Enrichment
-Next tasks in order:
-1. PatientAccess table — phone number + 4-digit code authentication
-2. Complete POST /api/v1/auth/patient/login (remove 501 stub)
-3. Referrals table — replaces/extends current GenerationSessions
-4. Patient-triggered Stage 2: POST /api/v1/referrals/{id}/stage2
-5. Progressive article loading — return partial results during generation
-6. ReferralEngagement + ArticleEngagement tracking tables
-7. PatientFeedback table and endpoint
-8. QR code generation per referral
-9. ArticleLibrary table with SHA-256 profile hash (Layer 1 cost reduction)
-10. WhatsApp Business API integration with 2-hour smart delay
+## Phase 2 — Complete
+- PatientAccess table (phone + 4-digit code authentication)
+- Referral, PatientProfile, ReferralEngagement tables
+- ArticleEngagement, PatientFeedback, MessageLog tables
+- WhatsAppService — Meta Cloud API integration (TestMode active)
+  PhoneNumberId: 1112172131979263
+  TestMode: true (hello_world template)
+- ReferralService — referral creation + Hangfire scheduled delivery
+- ReferralsController — POST/GET /api/v1/referrals
+- Patient JWT authentication (30-day expiry, Role=Patient claim)
+- EngagementController — referral + article engagement tracking
+- ProfileHashService — SHA-256 canonical profile hashing
+- ArticleLibraryService — Layer 1 cost reduction (LIBRARY HIT/MISS logging)
+- WorkflowService updated — checks ArticleLibrary before every Claude API call
+- ArticleLibrary table — shared across tenants (TenantId = null)
+
+## Phase 3 Target — Quality System + Chat
+- TestScenarios table + TestScenariosController
+- ContentEvaluations table + evaluation endpoints
+- Streaming SSE endpoint for physician test scenario evaluation
+- ChatThreads + ChatMessages tables
+- Chat endpoints (physician-patient async thread)
+- Push notification stubs (Firebase Cloud Messaging — Phase 4)
+- Update CLAUDE.md on completion
 
 ## Architecture — 5 User Roles
 1. Super Admin — Afyah Wise internal. Manages all tenants globally.
@@ -143,22 +187,23 @@ Next tasks in order:
 4. Assistant — primary referral creator (90% of daily work), linked to physicians.
 5. Patient — receives WhatsApp summary, triggers Stage 2, reads articles.
 
-## Architecture — Patient Referral Workflow (Phase 2 target)
+## Architecture — Patient Referral Workflow (Phase 2 complete)
 1. Provider creates referral → risk calculator runs (C#, no AI)
-2. Stage 1 generates → stored in DB and ArticleLibrary
+2. Stage 1 generates → ArticleLibrary checked first (Layer 1 cache hit = $0)
+   → stored in DB and ArticleLibrary on miss
 3. WhatsApp sends after configurable delay (default 2h):
    - Message 1: Full summary article + app download link
-   - Message 2: 4-digit access code (sent separately)
-4. Patient logs in: phone number + 4-digit code
-5. Patient reads Stage 1 summary (scroll tracking)
-6. Patient taps "Read More" → Stage 2 triggered on demand
+   - Message 2: 4-digit access code (sent separately, 2s delay)
+4. Patient logs in: phone number + 4-digit code → 30-day JWT
+5. Patient reads Stage 1 summary (scroll tracking → ArticleEngagement)
+6. Patient taps "Read More" → Stage 2 triggered on demand (Hangfire, Rule 3)
 7. Articles appear progressively as each Hangfire job completes
 8. Patient likes/dislikes, submits feedback
-9. Provider views engagement timeline
+9. Provider views engagement timeline via GET /referrals/{id}/engagement
 
 ## Architecture — Three-Layer Cost Reduction
 Layer 0: Prompt caching via SDK v5.10.0 — ACTIVE IN PRODUCTION
-Layer 1: SHA-256 exact profile hash → ArticleLibrary — Phase 2 Task 9
+Layer 1: SHA-256 exact profile hash → ArticleLibrary — ACTIVE IN PRODUCTION
 Layer 2: pgvector near-match search (threshold 0.92) — Phase 5
 Layer 3: Hangfire 30s batch delay for cache warming — Phase 2
 
@@ -216,11 +261,26 @@ All endpoints return ApiResponse<T> wrapper:
 Never return raw objects from controllers.
 Token in login response is at data.data.token (double-wrapped).
 
+RULE 12 — ArticleLibrary is the cache layer
+Always check ArticleLibraryService.GetByHashAsync() before calling Claude API.
+Always call ArticleLibraryService.SaveAsync() after successful generation.
+Never bypass the library check. TenantId = null for all shared entries.
+
+RULE 13 — WhatsApp delivery is always two messages
+Message 1: full summary article + app download link
+Message 2: 4-digit access code (sent separately, 2 second delay)
+Never combine code and content in the same message.
+TestMode uses hello_world template. Production uses text messages.
+
 ## Environment variables on Railway (production)
 ConnectionStrings__DefaultConnection — PostgreSQL connection string
 Anthropic__ApiKey — Claude API key (sk-ant-...)
 Jwt__Secret — JWT signing secret
 Cors__AllowedOrigins__0 — https://muafaplus1.vercel.app
+WhatsApp__PhoneNumberId = 1112172131979263
+WhatsApp__BusinessAccountId = 2052346812292213
+WhatsApp__AccessToken = (set in Railway — starts with EAA)
+WhatsApp__TestMode = true
 
 ## Governance
 - Prompt refinement: manual only, decided by Afyah Wise outside platform
