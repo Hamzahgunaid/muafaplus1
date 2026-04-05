@@ -192,3 +192,86 @@ public class GenerateInvitationCodeResponse
     public DateTime  ExpiresAt { get; set; }
     public Guid?     TenantId  { get; set; }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1 — Tenant management models
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class CreateTenantRequest
+{
+    [Required]
+    [StringLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(200)]
+    public string NameAr { get; set; } = string.Empty;
+
+    public string? LogoUrl { get; set; }
+
+    [Required]
+    [EmailAddress]
+    public string AdminEmail { get; set; } = string.Empty;
+
+    [Required]
+    public string PlanType { get; set; } = string.Empty;
+
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "CasesAllocated must be at least 1.")]
+    public int CasesAllocated { get; set; }
+}
+
+public class TenantSettingsResponse
+{
+    public string  PatientNamePolicy      { get; set; } = string.Empty;
+    public string? WhatsAppSenderId       { get; set; }
+    public int     NotificationDelayHours { get; set; }
+    public bool    ChatEnabled            { get; set; }
+    public int     PatientChatWindowDays  { get; set; }
+}
+
+public class TenantSubscriptionResponse
+{
+    public Guid     SubscriptionId    { get; set; }
+    public string   PlanType          { get; set; } = string.Empty;
+    public int      CasesAllocated    { get; set; }
+    public int      CasesUsed         { get; set; }
+    public DateTime BillingCycleStart { get; set; }
+    public DateTime BillingCycleEnd   { get; set; }
+    public bool     IsActive          { get; set; }
+
+    /// <summary>CasesUsed / CasesAllocated * 100. Returns 0 when CasesAllocated is 0.</summary>
+    public decimal UsagePercentage { get; set; }
+}
+
+public class TenantResponse
+{
+    public Guid     TenantId   { get; set; }
+    public string   Name       { get; set; } = string.Empty;
+    public string   NameAr     { get; set; } = string.Empty;
+    public string?  LogoUrl    { get; set; }
+    public bool     IsActive   { get; set; }
+    public DateTime CreatedAt  { get; set; }
+
+    public TenantSettingsResponse?      Settings            { get; set; }
+    public TenantSubscriptionResponse?  ActiveSubscription  { get; set; }
+}
+
+public class UpdateTenantSettingsRequest
+{
+    /// <summary>Accepted values: "Hide", "ShowOptional", "Require". Null = no change.</summary>
+    public string? PatientNamePolicy      { get; set; }
+    public string? WhatsAppSenderId       { get; set; }
+    public int?    NotificationDelayHours { get; set; }
+    public bool?   ChatEnabled            { get; set; }
+    public int?    PatientChatWindowDays  { get; set; }
+}
+
+public class LinkAssistantRequest
+{
+    [Required]
+    public string AssistantId { get; set; } = string.Empty;
+
+    [Required]
+    public string PhysicianId { get; set; } = string.Empty;
+}

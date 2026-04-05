@@ -102,6 +102,7 @@ try
     builder.Services.AddScoped<GenerationJobService>();
     builder.Services.AddScoped<ExportService>();
     builder.Services.AddScoped<InvitationCodeService>();
+    builder.Services.AddScoped<TenantService>();
 
     QuestPDF.Settings.License = LicenseType.Community;
 
