@@ -418,3 +418,68 @@ public class ReferralEngagementDetailResponse
     public List<ArticleEngagementResponse>  Articles  { get; set; } = [];
     public PatientFeedbackResponse?         Feedback  { get; set; }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Task 1 — Quality System models
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class CreateTestScenarioRequest
+{
+    [Required]
+    public string AgeGroup { get; set; } = string.Empty;
+
+    [Required]
+    public string PrimaryDiagnosis { get; set; } = string.Empty;
+
+    public string? Comorbidities      { get; set; }
+    public string? CurrentMedications { get; set; }
+    public string? Allergies          { get; set; }
+    public string? MedicalRestrictions { get; set; }
+
+    /// <summary>Optional label — stored in PatientDataJson, never used for real patient data.</summary>
+    public string? TestPatientName { get; set; }
+}
+
+public class TestScenarioResponse
+{
+    public Guid      ScenarioId       { get; set; }
+    public string    Status           { get; set; } = string.Empty;
+    public DateTime  CreatedAt        { get; set; }
+    public PatientData?    PatientData      { get; set; }
+    public Stage1Output?   GeneratedContent { get; set; }
+    public ContentEvaluationResponse? Evaluation { get; set; }
+}
+
+public class SubmitEvaluationRequest
+{
+    [Required][Range(1, 5)] public int AccuracyRating     { get; set; }
+    [Required][Range(1, 5)] public int ClarityRating      { get; set; }
+    [Required][Range(1, 5)] public int RelevanceRating    { get; set; }
+    [Required][Range(1, 5)] public int CompletenessRating { get; set; }
+
+    public bool IsAppropriate         { get; set; }
+    public bool IsCulturallySensitive { get; set; }
+    public bool IsArabicQuality       { get; set; }
+
+    [StringLength(2000)] public string? WhatWorked       { get; set; }
+    [StringLength(2000)] public string? NeedsImprovement { get; set; }
+    [StringLength(2000)] public string? Comments         { get; set; }
+}
+
+public class ContentEvaluationResponse
+{
+    public int  AccuracyRating      { get; set; }
+    public int  ClarityRating       { get; set; }
+    public int  RelevanceRating     { get; set; }
+    public int  CompletenessRating  { get; set; }
+
+    public bool IsAppropriate         { get; set; }
+    public bool IsCulturallySensitive { get; set; }
+    public bool IsArabicQuality       { get; set; }
+
+    public string? WhatWorked       { get; set; }
+    public string? NeedsImprovement { get; set; }
+    public string? Comments         { get; set; }
+
+    public DateTime SubmittedAt { get; set; }
+}

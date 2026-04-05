@@ -37,14 +37,15 @@ public class ReferralService
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a complete referral record in 7 steps:
+    /// Creates a complete referral record in 8 steps:
     /// 1. Validate tenant + subscription
     /// 2. Upsert PatientAccess (generate 4-digit code)
-    /// 3. Create PatientProfile (no AI call — clinical data only)
+    /// 3. Create PatientProfile (SHA-256 hash included)
     /// 4. Create Referral record
     /// 5. Create ReferralEngagement record (all timestamps null)
-    /// 6. Schedule Hangfire delivery job
-    /// 7. Return ReferralResponse with Created status
+    /// 6. Generate Stage 1 via WorkflowService + link SessionId (sync; Layer 1 cache)
+    /// 7. Schedule Hangfire delivery job
+    /// 8. Return ReferralResponse with Stage1Complete status
     /// </summary>
     public async Task<ReferralResponse> CreateReferralAsync(
         CreateReferralRequest request,
@@ -142,7 +143,42 @@ public class ReferralService
 
         await _db.SaveChangesAsync();
 
-        // ── Step 6: Schedule Hangfire delivery job ────────────────────────────
+        // ── Step 6: Generate Stage 1 and link SessionId ───────────────────────
+        // WorkflowService runs Stage 1 synchronously (5-15s), then enqueues
+        // Stage 2 as a Hangfire job. The SessionId is stored on the Referral so
+        // DeliverReferralAsync can load the summary article for WhatsApp delivery.
+        // ArticleLibrary (Layer 1) serves cache hits at $0 cost.
+        var patientData = new PatientData
+        {
+            PrimaryDiagnosis    = request.PrimaryDiagnosis,
+            AgeGroup            = request.AgeGroup,
+            Comorbidities       = request.Comorbidities       ?? string.Empty,
+            CurrentMedications  = request.CurrentMedications  ?? string.Empty,
+            Allergies           = request.Allergies           ?? string.Empty,
+            MedicalRestrictions = request.MedicalRestrictions ?? string.Empty
+        };
+
+        var workflowResult = await _workflow.ExecuteCompleteWorkflowAsync(physicianId, patientData);
+
+        if (workflowResult.Success)
+        {
+            referral.SessionId = workflowResult.SessionId;
+            referral.RiskLevel = workflowResult.RiskScore?.RiskLevelString;
+            referral.Status    = ReferralStatus.Stage1Complete;
+            await _db.SaveChangesAsync();
+            _logger.LogInformation(
+                "Referral {ReferralId} Stage 1 linked — session:{SessionId} risk:{Risk}",
+                referral.ReferralId, workflowResult.SessionId,
+                workflowResult.RiskScore?.RiskLevelString ?? "UNKNOWN");
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Referral {ReferralId} Stage 1 failed — WhatsApp delivery will be skipped — {Error}",
+                referral.ReferralId, workflowResult.ErrorMessage);
+        }
+
+        // ── Step 7: Schedule Hangfire delivery job ────────────────────────────
         var delay = scheduledAt - DateTime.UtcNow;
 
         if (delay <= TimeSpan.Zero)
@@ -156,7 +192,7 @@ public class ReferralService
             "Referral {ReferralId} created — patient:{Phone} delivery in {Hours}h",
             referral.ReferralId, request.PatientPhone, delayHours);
 
-        // ── Step 7: Return ReferralResponse ──────────────────────────────────
+        // ── Step 8: Return ReferralResponse ──────────────────────────────────
         return MapToResponse(referral, access.PhoneNumber, engagement);
     }
 

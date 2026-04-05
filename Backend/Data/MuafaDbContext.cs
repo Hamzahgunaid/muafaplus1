@@ -43,6 +43,10 @@ public class MuafaDbContext : DbContext
     // ── Phase 2 Task 4 — Layer 1 cost reduction ───────────────────────────────
     public DbSet<ArticleLibrary>      ArticleLibrary       { get; set; }
 
+    // ── Phase 3 Task 1 — Quality System ──────────────────────────────────────
+    public DbSet<TestScenario>        TestScenarios        { get; set; }
+    public DbSet<ContentEvaluation>   ContentEvaluations   { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -311,6 +315,31 @@ public class MuafaDbContext : DbContext
             entity.HasIndex(e => e.TenantId);
             entity.Property(e => e.HitCount).HasDefaultValue(0);
             entity.Property(e => e.FirstGeneratedAt).HasDefaultValueSql("NOW()");
+        });
+
+        // ── Phase 3 Task 1 — TestScenario ────────────────────────────────────
+        modelBuilder.Entity<TestScenario>(entity =>
+        {
+            entity.HasKey(e => e.ScenarioId);
+            entity.HasIndex(e => new { e.PhysicianId, e.TenantId });
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Tenant)
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 3 Task 1 — ContentEvaluation (one-to-one with TestScenario) ─
+        modelBuilder.Entity<ContentEvaluation>(entity =>
+        {
+            entity.HasKey(e => e.EvaluationId);
+            entity.HasIndex(e => e.ScenarioId).IsUnique();
+            entity.Property(e => e.SubmittedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Scenario)
+                  .WithOne(s => s.Evaluation)
+                  .HasForeignKey<ContentEvaluation>(e => e.ScenarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── Seed physicians ────────────────────────────────────────────────────
