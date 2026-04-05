@@ -103,6 +103,8 @@ try
     builder.Services.AddScoped<ExportService>();
     builder.Services.AddScoped<InvitationCodeService>();
     builder.Services.AddScoped<TenantService>();
+    builder.Services.AddScoped<ReferralService>();
+    builder.Services.AddHttpClient<WhatsAppService>();
 
     QuestPDF.Settings.License = LicenseType.Community;
 
