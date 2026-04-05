@@ -61,8 +61,18 @@ public class ReferralsController : ControllerBase
                 ErrorType = "MissingPhysicianClaim"
             });
 
-        var tenantId = Guid.TryParse(
-            User.FindFirst("TenantId")?.Value, out var tid) ? tid : Guid.Empty;
+        var tenantIdClaim = User.FindFirst("TenantId")?.Value;
+        var tenantId = !string.IsNullOrEmpty(tenantIdClaim) &&
+                       Guid.TryParse(tenantIdClaim, out var tid)
+                       ? tid : Guid.Empty;
+
+        if (tenantId == Guid.Empty)
+            return BadRequest(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = "Physician is not linked to a tenant. Contact your administrator.",
+                ErrorType = "TenantNotLinked"
+            });
 
         try
         {

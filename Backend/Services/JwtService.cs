@@ -38,6 +38,7 @@ public class JwtService
             new Claim(ClaimTypes.Email,           physician.Email ?? string.Empty),
             new Claim("specialty",                physician.Specialty),
             new Claim("institution",              physician.Institution ?? string.Empty),
+            new Claim("TenantId",                 physician.TenantId?.ToString() ?? ""),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
