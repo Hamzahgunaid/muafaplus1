@@ -160,13 +160,14 @@ try
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<MuafaDbContext>();
+        db.Database.Migrate();
+    }
+
     if (app.Environment.IsDevelopment())
     {
-        using var scope = app.Services.CreateScope();
-        scope.ServiceProvider
-            .GetRequiredService<MuafaDbContext>()
-            .Database.Migrate();
-
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
