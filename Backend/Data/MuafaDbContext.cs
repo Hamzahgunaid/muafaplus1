@@ -47,6 +47,10 @@ public class MuafaDbContext : DbContext
     public DbSet<TestScenario>        TestScenarios        { get; set; }
     public DbSet<ContentEvaluation>   ContentEvaluations   { get; set; }
 
+    // ── Phase 3 Task 2 — Async Chat ───────────────────────────────────────────
+    public DbSet<ChatThread>          ChatThreads          { get; set; }
+    public DbSet<ChatMessage>         ChatMessages         { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -62,6 +66,7 @@ public class MuafaDbContext : DbContext
             entity.Property(e => e.PreferredLanguage).HasDefaultValue("Arabic");
             entity.Property(e => e.EmailNotifications).HasDefaultValue(true);
             entity.Property(e => e.SmsNotifications).HasDefaultValue(false);
+            entity.Property(e => e.ChatEnabled).HasDefaultValue(false);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
@@ -339,6 +344,34 @@ public class MuafaDbContext : DbContext
             entity.HasOne(e => e.Scenario)
                   .WithOne(s => s.Evaluation)
                   .HasForeignKey<ContentEvaluation>(e => e.ScenarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 3 Task 2 — ChatThread (one-to-one with Referral) ───────────
+        modelBuilder.Entity<ChatThread>(entity =>
+        {
+            entity.HasKey(e => e.ThreadId);
+            entity.HasIndex(e => e.ReferralId).IsUnique();
+            entity.Property(e => e.IsEnabled).HasDefaultValue(true);
+            entity.Property(e => e.MessageCount).HasDefaultValue(0);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Referral)
+                  .WithOne(r => r.ChatThread)
+                  .HasForeignKey<ChatThread>(e => e.ReferralId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Phase 3 Task 2 — ChatMessage (one-to-many with ChatThread) ────────
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasKey(e => e.MessageId);
+            entity.HasIndex(e => new { e.ThreadId, e.SentAt });
+            entity.Property(e => e.SenderRole).HasConversion<string>();
+            entity.Property(e => e.IsRead).HasDefaultValue(false);
+            entity.Property(e => e.SentAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Thread)
+                  .WithMany(t => t.Messages)
+                  .HasForeignKey(e => e.ThreadId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

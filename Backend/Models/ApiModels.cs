@@ -483,3 +483,55 @@ public class ContentEvaluationResponse
 
     public DateTime SubmittedAt { get; set; }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Task 2 — Physician-Patient Async Chat models
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class SendMessageRequest
+{
+    [Required]
+    [StringLength(2000)]
+    public string Content { get; set; } = string.Empty;
+}
+
+public class ChatMessageResponse
+{
+    public Guid     MessageId  { get; set; }
+    public string   SenderRole { get; set; } = string.Empty;   // "Physician" or "Patient"
+    public string   Content    { get; set; } = string.Empty;
+    public DateTime SentAt     { get; set; }
+    public bool     IsRead     { get; set; }
+}
+
+public class ChatThreadResponse
+{
+    public Guid     ThreadId     { get; set; }
+    public Guid     ReferralId   { get; set; }
+    public bool     IsEnabled    { get; set; }
+    public DateTime ExpiresAt    { get; set; }
+
+    /// <summary>Calculated: ExpiresAt &lt; DateTime.UtcNow.</summary>
+    public bool IsExpired    { get; set; }
+    public int  MessageCount { get; set; }
+
+    public List<ChatMessageResponse> Messages { get; set; } = [];
+
+    /// <summary>Always included in every response regardless of caller role.</summary>
+    public string DisclaimerAr { get; set; } =
+        "هذه القناة مخصصة لتوضيح محتوى التثقيف الصحي فقط. " +
+        "لا تمثل استشارة طبية. للحصول على مشورة طبية أو في " +
+        "حالات الطوارئ، تواصل مع عيادة طبيبك مباشرة.";
+
+    /// <summary>Always included in every response regardless of caller role.</summary>
+    public string DisclaimerEn { get; set; } =
+        "This channel is for clarification of your health education " +
+        "content only. It does not constitute a medical consultation. " +
+        "For medical advice or emergencies, contact your physician's " +
+        "clinic directly.";
+}
+
+public class UpdateChatSettingsRequest
+{
+    public bool ChatEnabled { get; set; }
+}

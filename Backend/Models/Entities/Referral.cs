@@ -54,4 +54,5 @@ public class Referral
     public PatientFeedback?     Feedback       { get; set; }
     public ICollection<ArticleEngagement> ArticleEngagements { get; set; } = [];
     public ICollection<MessageLog>        MessageLogs        { get; set; } = [];
+    public ChatThread?                    ChatThread         { get; set; }
 }
