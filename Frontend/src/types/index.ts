@@ -179,6 +179,18 @@ export interface ReferralResponse {
   createdAt:            string;
   updatedAt:            string;
   scheduledDeliveryAt?: string | null;
+  deliveredAt?:         string | null;
+}
+
+// ── Referral Engagement ───────────────────────────────────────────────────────
+
+export interface ReferralEngagementResponse {
+  referralId:           string;
+  messageSentAt:        string | null;
+  appOpenedAt:          string | null;
+  summaryViewedAt:      string | null;
+  stage2RequestedAt:    string | null;
+  feedbackSubmittedAt:  string | null;
 }
 
 // ── Test Scenarios ────────────────────────────────────────────────────────────
