@@ -265,21 +265,35 @@ export interface ChatThreadResponse {
 
 // ── Tenants ───────────────────────────────────────────────────────────────────
 
+export interface TenantSubscriptionSummary {
+  planType:         string;
+  casesAllocated:   number;
+  casesUsed:        number;
+  usagePercentage:  number;
+  billingCycleEnd:  string;
+}
+
 export interface TenantResponse {
-  tenantId:    string;
-  name:        string;
-  slug:        string;
-  country:     string | null;
-  city:        string | null;
-  isActive:    boolean;
-  createdAt:   string;
+  tenantId:            string;
+  name:                string;
+  nameAr?:             string | null;
+  slug:                string;
+  country:             string | null;
+  city:                string | null;
+  isActive:            boolean;
+  createdAt:           string;
+  activeSubscription?: TenantSubscriptionSummary | null;
 }
 
 export interface CreateTenantRequest {
-  name:     string;
-  slug:     string;
-  country?: string;
-  city?:    string;
+  name:             string;
+  nameAr?:          string;
+  slug?:            string;
+  country?:         string;
+  city?:            string;
+  adminEmail?:      string;
+  planType?:        string;
+  casesAllocated?:  number;
 }
 
 export interface GenerateInvitationCodeRequest {
