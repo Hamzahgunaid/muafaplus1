@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
 import { physicianApi } from "@/services/api";
+import NavBar from "@/components/NavBar";
 import type { SessionSummary, RiskLevel } from "@/types";
 
 const RISK_LABELS: Record<RiskLevel, string> = {
@@ -29,7 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function DashboardPage() {
   const router    = useRouter();
-  const { isLoggedIn, physician, logout } = useAuthStore();
+  const { isLoggedIn, physician } = useAuthStore();
   const [sessions, setSessions]   = useState<SessionSummary[]>([]);
   const [loading, setLoading]     = useState(true);
   const [page, setPage]           = useState(1);
@@ -51,39 +52,13 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-  const handleLogout = () => { logout(); router.push("/login"); };
-
   if (!isLoggedIn || !physician) return null;
 
   return (
     <div className="min-h-screen flex flex-col">
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white font-bold text-sm">
-            م+
-          </div>
-          <div>
-            <span className="font-semibold text-gray-900 text-sm">{physician.fullName}</span>
-            <span className="text-gray-400 text-xs block">{physician.specialty}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/generate"
-            className="px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-800 transition"
-          >
-            + مريض جديد
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="text-gray-400 hover:text-gray-700 text-sm transition"
-          >
-            خروج
-          </button>
-        </div>
-      </header>
+      <NavBar />
 
       {/* ── Main ────────────────────────────────────────────────────────────── */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">
