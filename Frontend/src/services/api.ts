@@ -155,6 +155,11 @@ export const testScenarioApi = {
     return data;
   },
 
+  getTestScenarios: async (): Promise<ApiResponse<TestScenarioResponse[]>> => {
+    const { data } = await http.get<ApiResponse<TestScenarioResponse[]>>("/test-scenarios");
+    return data;
+  },
+
   getTestScenario: async (id: string): Promise<ApiResponse<TestScenarioResponse>> => {
     const { data } = await http.get<ApiResponse<TestScenarioResponse>>(`/test-scenarios/${id}`);
     return data;
