@@ -154,28 +154,31 @@ export interface SessionStatus {
 // ── Referrals ─────────────────────────────────────────────────────────────────
 
 export interface CreateReferralRequest {
-  patientPhone:         string;
-  patientNameOverride?: string;
-  primaryDiagnosis:     string;
-  ageGroup:             AgeGroup;
-  comorbidities?:       string;
-  currentMedications?:  string;
-  allergies?:           string;
-  medicalRestrictions?: string;
-  notes?:               string;
+  patientPhone:             string;
+  patientNameOverride?:     string;
+  primaryDiagnosis:         string;
+  ageGroup:                 AgeGroup;
+  comorbidities?:           string;
+  currentMedications?:      string;
+  allergies?:               string;
+  medicalRestrictions?:     string;
+  notes?:                   string;
+  notificationDelayHours?:  number;
+  whatsAppDelivery?:        boolean;
 }
 
 export interface ReferralResponse {
-  referralId:     string;
-  referralCode:   string;
-  patientPhone:   string;
-  patientName:    string | null;
-  status:         string;
-  riskLevel:      string | null;
-  sessionId:      string | null;
-  notes:          string | null;
-  createdAt:      string;
-  updatedAt:      string;
+  referralId:           string;
+  referralCode:         string;
+  patientPhone:         string;
+  patientName:          string | null;
+  status:               string;
+  riskLevel:            string | null;
+  sessionId:            string | null;
+  notes:                string | null;
+  createdAt:            string;
+  updatedAt:            string;
+  scheduledDeliveryAt?: string | null;
 }
 
 // ── Test Scenarios ────────────────────────────────────────────────────────────
