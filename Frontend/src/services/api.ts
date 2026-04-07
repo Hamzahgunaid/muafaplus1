@@ -2,6 +2,10 @@ import axios, { AxiosInstance } from "axios";
 import type {
   ApiResponse, LoginRequest, LoginResponse, ChangePasswordRequest, PatientData,
   PhysicianProfile, SessionSummary, SessionDetail, SessionStatus, WorkflowResult,
+  CreateReferralRequest, ReferralResponse,
+  CreateTestScenarioRequest, TestScenarioResponse, SubmitEvaluationRequest, ContentEvaluationResponse,
+  ChatThreadResponse, ChatMessageResponse,
+  TenantResponse, CreateTenantRequest, GenerateInvitationCodeRequest,
 } from "@/types";
 
 // Set NEXT_PUBLIC_API_URL in .env.local (dev) or Vercel environment variables (production).
@@ -118,3 +122,138 @@ export const sessionApi = {
   getExportUrl: (sessionId: string, format: "pdf" | "docx") =>
     `${BASE_URL}/api/v1/sessions/${sessionId}/export?format=${format}`,
 };
+
+// ── Referrals ─────────────────────────────────────────────────────────────────
+
+export const referralApi = {
+  createReferral: async (req: CreateReferralRequest): Promise<ApiResponse<ReferralResponse>> => {
+    const { data } = await http.post<ApiResponse<ReferralResponse>>("/referrals", req);
+    return data;
+  },
+
+  getReferrals: async (): Promise<ApiResponse<ReferralResponse[]>> => {
+    const { data } = await http.get<ApiResponse<ReferralResponse[]>>("/referrals");
+    return data;
+  },
+
+  getReferral: async (id: string): Promise<ApiResponse<ReferralResponse>> => {
+    const { data } = await http.get<ApiResponse<ReferralResponse>>(`/referrals/${id}`);
+    return data;
+  },
+
+  getEngagement: async (id: string): Promise<ApiResponse<unknown>> => {
+    const { data } = await http.get<ApiResponse<unknown>>(`/referrals/${id}/engagement`);
+    return data;
+  },
+};
+
+// ── Test Scenarios ────────────────────────────────────────────────────────────
+
+export const testScenarioApi = {
+  createTestScenario: async (req: CreateTestScenarioRequest): Promise<ApiResponse<TestScenarioResponse>> => {
+    const { data } = await http.post<ApiResponse<TestScenarioResponse>>("/test-scenarios", req);
+    return data;
+  },
+
+  getTestScenario: async (id: string): Promise<ApiResponse<TestScenarioResponse>> => {
+    const { data } = await http.get<ApiResponse<TestScenarioResponse>>(`/test-scenarios/${id}`);
+    return data;
+  },
+
+  submitEvaluation: async (
+    scenarioId: string,
+    req: SubmitEvaluationRequest
+  ): Promise<ApiResponse<ContentEvaluationResponse>> => {
+    const { data } = await http.post<ApiResponse<ContentEvaluationResponse>>(
+      `/test-scenarios/${scenarioId}/evaluation`,
+      req
+    );
+    return data;
+  },
+};
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
+export const chatApi = {
+  getChatThread: async (referralId: string): Promise<ApiResponse<ChatThreadResponse>> => {
+    const { data } = await http.get<ApiResponse<ChatThreadResponse>>(`/referrals/${referralId}/chat`);
+    return data;
+  },
+
+  sendChatMessage: async (
+    referralId: string,
+    content: string
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    const { data } = await http.post<ApiResponse<ChatMessageResponse>>(
+      `/referrals/${referralId}/chat/messages`,
+      { content }
+    );
+    return data;
+  },
+
+  updateSettings: async (
+    physicianId: string,
+    chatEnabled: boolean
+  ): Promise<ApiResponse<object>> => {
+    const { data } = await http.put<ApiResponse<object>>(
+      `/physicians/${physicianId}/chat-settings`,
+      { chatEnabled }
+    );
+    return data;
+  },
+};
+
+// ── Tenants ───────────────────────────────────────────────────────────────────
+
+export const tenantApi = {
+  getTenants: async (): Promise<ApiResponse<TenantResponse[]>> => {
+    const { data } = await http.get<ApiResponse<TenantResponse[]>>("/tenants");
+    return data;
+  },
+
+  createTenant: async (req: CreateTenantRequest): Promise<ApiResponse<TenantResponse>> => {
+    const { data } = await http.post<ApiResponse<TenantResponse>>("/tenants", req);
+    return data;
+  },
+
+  generateInvitationCode: async (
+    req: GenerateInvitationCodeRequest
+  ): Promise<ApiResponse<{ code: string; expiresAt: string }>> => {
+    const { data } = await http.post<ApiResponse<{ code: string; expiresAt: string }>>(
+      "/auth/invitation-codes/generate",
+      req
+    );
+    return data;
+  },
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Masks a phone number, keeping only the last 4 digits visible.
+ *  "+967782705557" → "+967***5557" */
+export function maskPhone(phone: string): string {
+  if (phone.length <= 4) return phone;
+  const last4 = phone.slice(-4);
+  const prefix = phone.slice(0, phone.length - 7); // keep country code area
+  return `${prefix}***${last4}`;
+}
+
+/** Returns Arabic relative time for a date string.
+ *  e.g. "منذ 3 ساعات", "منذ يومين", "الآن" */
+export function formatRelativeTime(dateString: string | null): string {
+  if (!dateString) return "";
+  const diff = Date.now() - new Date(dateString).getTime();
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours   = Math.floor(minutes / 60);
+  const days    = Math.floor(hours   / 24);
+  const weeks   = Math.floor(days    / 7);
+  const months  = Math.floor(days    / 30);
+
+  if (seconds < 60)  return "الآن";
+  if (minutes < 60)  return minutes === 1 ? "منذ دقيقة" : `منذ ${minutes} دقائق`;
+  if (hours   < 24)  return hours   === 1 ? "منذ ساعة"  : `منذ ${hours} ساعات`;
+  if (days    < 7)   return days    === 1 ? "منذ يوم"   : `منذ ${days} أيام`;
+  if (weeks   < 4)   return weeks   === 1 ? "منذ أسبوع" : `منذ ${weeks} أسابيع`;
+  return months      === 1 ? "منذ شهر"   : `منذ ${months} أشهر`;
+}

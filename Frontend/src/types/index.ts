@@ -150,3 +150,126 @@ export interface SessionStatus {
   completedAt:   string | null;
   errorMessage:  string | null;
 }
+
+// ── Referrals ─────────────────────────────────────────────────────────────────
+
+export interface CreateReferralRequest {
+  patientPhone:         string;
+  patientNameOverride?: string;
+  primaryDiagnosis:     string;
+  ageGroup:             AgeGroup;
+  comorbidities?:       string;
+  currentMedications?:  string;
+  allergies?:           string;
+  medicalRestrictions?: string;
+  notes?:               string;
+}
+
+export interface ReferralResponse {
+  referralId:     string;
+  referralCode:   string;
+  patientPhone:   string;
+  patientName:    string | null;
+  status:         string;
+  riskLevel:      string | null;
+  sessionId:      string | null;
+  notes:          string | null;
+  createdAt:      string;
+  updatedAt:      string;
+}
+
+// ── Test Scenarios ────────────────────────────────────────────────────────────
+
+export interface CreateTestScenarioRequest {
+  primaryDiagnosis:    string;
+  ageGroup:            AgeGroup;
+  comorbidities?:      string;
+  currentMedications?: string;
+  allergies?:          string;
+  medicalRestrictions?: string;
+}
+
+export interface ContentEvaluationResponse {
+  evaluationId:          string;
+  accuracyRating:        number;
+  clarityRating:         number;
+  relevanceRating:       number;
+  completenessRating:    number;
+  isAppropriate:         boolean;
+  isCulturallySensitive: boolean;
+  isArabicQuality:       boolean;
+  whatWorked:            string | null;
+  needsImprovement:      string | null;
+  comments:              string | null;
+  submittedAt:           string;
+}
+
+export interface TestScenarioResponse {
+  scenarioId:           string;
+  status:               string;
+  patientDataJson:      string;
+  generatedContentJson: string | null;
+  createdAt:            string;
+  evaluation:           ContentEvaluationResponse | null;
+}
+
+export interface SubmitEvaluationRequest {
+  accuracyRating:        number;
+  clarityRating:         number;
+  relevanceRating:       number;
+  completenessRating:    number;
+  isAppropriate:         boolean;
+  isCulturallySensitive: boolean;
+  isArabicQuality:       boolean;
+  whatWorked?:           string;
+  needsImprovement?:     string;
+  comments?:             string;
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
+export interface ChatMessageResponse {
+  messageId:  string;
+  senderRole: "Physician" | "Patient";
+  content:    string;
+  sentAt:     string;
+  isRead:     boolean;
+}
+
+export interface ChatThreadResponse {
+  threadId:      string;
+  referralId:    string;
+  isEnabled:     boolean;
+  expiresAt:     string;
+  messageCount:  number;
+  createdAt:     string;
+  messages:      ChatMessageResponse[];
+  disclaimerAr:  string;
+  disclaimerEn:  string;
+}
+
+// ── Tenants ───────────────────────────────────────────────────────────────────
+
+export interface TenantResponse {
+  tenantId:    string;
+  name:        string;
+  slug:        string;
+  country:     string | null;
+  city:        string | null;
+  isActive:    boolean;
+  createdAt:   string;
+}
+
+export interface CreateTenantRequest {
+  name:     string;
+  slug:     string;
+  country?: string;
+  city?:    string;
+}
+
+export interface GenerateInvitationCodeRequest {
+  role:       string;
+  tenantId?:  string;
+  expiresAt?: string;
+  maxUses?:   number;
+}
