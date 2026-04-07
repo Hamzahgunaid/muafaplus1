@@ -392,36 +392,27 @@ function InvitationCodeCard() {
             });
             const roleLabel = ROLE_OPTIONS.find((r) => r.value === gc.role)?.label ?? gc.role;
             return (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-50 border border-brand-100">
-                {/* Code */}
-                <span className="flex-1 font-mono font-bold text-brand-800 text-lg tracking-widest">
-                  {gc.code}
-                </span>
-
-                {/* Copy button */}
-                <button
-                  type="button"
-                  onClick={() => copyCode(gc.code)}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-brand-200 text-brand-700 hover:bg-brand-100 transition"
-                >
-                  {copied === gc.code ? "✓ تم النسخ" : "نسخ"}
-                </button>
+              <div key={i} className="rounded-xl bg-brand-50 border border-brand-100 overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <span className="flex-1 font-mono font-bold text-brand-800 text-lg tracking-widest">
+                    {gc.code}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copyCode(gc.code)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-brand-200 text-brand-700 hover:bg-brand-100 transition"
+                  >
+                    {copied === gc.code ? "✓ تم النسخ" : "نسخ"}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-brand-600 px-4 pb-3">
+                  <span>الدور: {roleLabel}</span>
+                  <span>ينتهي في: {expiry}</span>
+                </div>
               </div>
             );
           })}
-          {generatedCodes.map((gc, i) => {
-            const expiry = new Date(gc.expiresAt).toLocaleDateString("ar-YE", {
-              year: "numeric", month: "short", day: "numeric",
-            });
-            const roleLabel = ROLE_OPTIONS.find((r) => r.value === gc.role)?.label ?? gc.role;
-            return (
-              <div key={`meta-${i}`} className="flex items-center justify-between text-xs text-gray-500 px-1">
-                <span>الدور: {roleLabel}</span>
-                <span>ينتهي في: {expiry}</span>
-              </div>
-            );
-          })}
-          <p className="text-xs text-gray-400 mt-1">أرسل هذا الرمز للمستخدم الجديد</p>
+          <p className="text-xs text-gray-400">أرسل هذا الرمز للمستخدم الجديد</p>
         </div>
       )}
     </Card>
