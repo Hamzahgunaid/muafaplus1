@@ -184,6 +184,7 @@ try
 
     if (app.Environment.IsDevelopment())
         app.UseHttpsRedirection();
+    app.UseRouting();
     app.UseCors();
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
