@@ -5,7 +5,7 @@ for post-diagnosis patient care in Yemen. Physicians refer patients and the
 system generates personalised Arabic health education articles via Claude AI,
 delivered through WhatsApp and a Flutter mobile app.
 
-## Current State — Phase 2 Complete
+## Current State — Phase 3.5 Complete
 Production is LIVE:
 - Frontend: https://muafaplus1.vercel.app
 - Backend: https://muafaplus1-production.up.railway.app
@@ -171,14 +171,24 @@ Backend/Controllers/EngagementController.cs
 - WorkflowService updated — checks ArticleLibrary before every Claude API call
 - ArticleLibrary table — shared across tenants (TenantId = null)
 
-## Phase 3 Target — Quality System + Chat
-- TestScenarios table + TestScenariosController
-- ContentEvaluations table + evaluation endpoints
-- Streaming SSE endpoint for physician test scenario evaluation
-- ChatThreads + ChatMessages tables
-- Chat endpoints (physician-patient async thread)
-- Push notification stubs (Firebase Cloud Messaging — Phase 4)
-- Update CLAUDE.md on completion
+## Phase 3.5 — Web Portal Update Complete
+Frontend pages added (Next.js 14, RTL Arabic):
+- /referrals — referral list with engagement dots + risk badges
+- /referrals/new — referral creation form (all clinical fields)
+- /referrals/[id] — referral detail + engagement timeline + chat
+- /test-scenarios — scenario list with status and star rating summary
+- /test-scenarios/new — create scenario + preview generated content
+- /test-scenarios/[id] — view generated content + submit evaluation
+- /admin — tenant management + invitation code generator + chat settings
+NavBar component shared across all pages.
+api.ts extended: 11 new functions covering referrals,
+test scenarios, chat, and tenant management.
+Total frontend routes: 14
+
+## Phase 4 Target — Flutter Mobile Application
+See specification document Section 13 for full scope.
+Backend APIs are complete and verified.
+Web portal (Phase 3.5) serves as UI reference for Flutter development.
 
 ## Architecture — 5 User Roles
 1. Super Admin — Afyah Wise internal. Manages all tenants globally.
