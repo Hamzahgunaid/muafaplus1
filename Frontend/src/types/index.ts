@@ -7,6 +7,8 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token:       string;
+  userId:      string;
+  role:        string;
   physicianId: string;
   fullName:    string;
   specialty:   string;
