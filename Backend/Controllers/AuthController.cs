@@ -41,8 +41,9 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Authenticates a physician and returns a signed JWT.
-    /// The token carries the PhysicianId claim used by all downstream endpoints.
+    /// Phase 3.6 Task 2: Authenticates any provider user via the unified AppUser table.
+    /// Looks up the Physician record by email to populate legacy PhysicianId /
+    /// Specialty / Institution claims so all existing controllers remain compatible.
     /// </summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
@@ -65,11 +66,11 @@ public class AuthController : ControllerBase
                 }
             });
 
-        // Look up physician by email
-        var physician = await _db.Physicians
-            .FirstOrDefaultAsync(p => p.Email == request.Email && p.IsActive);
+        // Phase 3.6: look up unified AppUser by email
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
-        if (physician == null)
+        if (user == null)
         {
             _logger.LogWarning("Login attempt for unknown email: {Email}", request.Email);
             return Unauthorized(new ApiResponse<object>
@@ -79,13 +80,9 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Look up stored credential hash
-        var credential = await _db.PhysicianCredentials
-            .FindAsync(physician.PhysicianId);
-
-        if (credential == null || !BCrypt.Net.BCrypt.Verify(request.Password, credential.PasswordHash))
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
-            _logger.LogWarning("Failed login — physician:{Id}", physician.PhysicianId);
+            _logger.LogWarning("Failed login — user:{Email}", user.Email);
             return Unauthorized(new ApiResponse<object>
             {
                 Success = false,
@@ -93,14 +90,23 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Update last login timestamp
-        credential.LastLoginAt = DateTime.UtcNow;
+        // Update last login timestamp on AppUser
+        user.LastLoginAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var expiryHours = int.TryParse(_config["Jwt:ExpiryHours"], out var h) ? h : 12;
-        var token       = _jwt.GenerateToken(physician);
+        // Look up Physician record by email for backward-compat claims
+        var physician = await _db.Physicians
+            .FirstOrDefaultAsync(p => p.Email == request.Email && p.IsActive);
 
-        _logger.LogInformation("Successful login — physician:{Id}", physician.PhysicianId);
+        var expiryHours = int.TryParse(_config["Jwt:ExpiryHours"], out var h) ? h : 12;
+        var token       = _jwt.GenerateToken(
+            user:        user,
+            physicianId: physician?.PhysicianId,
+            specialty:   physician?.Specialty,
+            institution: physician?.Institution);
+
+        _logger.LogInformation(
+            "Successful login — user:{Email} role:{Role}", user.Email, user.Role);
 
         return Ok(new ApiResponse<LoginResponse>
         {
@@ -108,12 +114,14 @@ public class AuthController : ControllerBase
             Data    = new LoginResponse
             {
                 Token                = token,
-                PhysicianId          = physician.PhysicianId,
-                FullName             = physician.FullName,
-                Specialty            = physician.Specialty,
-                Institution          = physician.Institution,
+                UserId               = user.UserId.ToString(),
+                PhysicianId          = physician?.PhysicianId ?? string.Empty,
+                FullName             = user.FullName,
+                Specialty            = physician?.Specialty   ?? string.Empty,
+                Institution          = physician?.Institution,
+                Role                 = user.Role,
                 ExpiresAt            = DateTime.UtcNow.AddHours(expiryHours),
-                MustResetOnNextLogin = credential.MustResetOnNextLogin
+                MustResetOnNextLogin = user.MustResetOnNextLogin
             }
         });
     }
@@ -283,10 +291,10 @@ public class AuthController : ControllerBase
 
     /// <summary>
     /// Generates a new invitation code for the given role.
-    /// Requires a valid physician JWT.
+    /// Requires SuperAdmin or HospitalAdmin role.
     /// </summary>
     [HttpPost("invitation-codes/generate")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,HospitalAdmin")]
     [ProducesResponseType(typeof(ApiResponse<GenerateInvitationCodeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<GenerateInvitationCodeResponse>>> GenerateInvitationCode(

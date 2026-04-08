@@ -88,7 +88,10 @@ try
                 ValidAudience = builder.Configuration["Jwt:Audience"] ?? "muafaplus-ui",
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(jwtSecret)),
-                ClockSkew = TimeSpan.FromMinutes(1)
+                ClockSkew = TimeSpan.FromMinutes(1),
+                // Phase 3.6: "Role" is used in all JWTs (provider + patient).
+                // Required for [Authorize(Roles = "...")] to work correctly.
+                RoleClaimType = "Role"
             };
         });
 

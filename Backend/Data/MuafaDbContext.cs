@@ -51,6 +51,9 @@ public class MuafaDbContext : DbContext
     public DbSet<ChatThread>          ChatThreads          { get; set; }
     public DbSet<ChatMessage>         ChatMessages         { get; set; }
 
+    // ── Phase 3.6 Task 2 — Unified Auth ──────────────────────────────────────
+    public DbSet<AppUser>             Users                { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -404,6 +407,73 @@ public class MuafaDbContext : DbContext
             new PhysicianCredential { PhysicianId = "PHY001", PasswordHash = defaultHash, MustResetOnNextLogin = true, CreatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc) },
             new PhysicianCredential { PhysicianId = "PHY002", PasswordHash = defaultHash, MustResetOnNextLogin = true, CreatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc) },
             new PhysicianCredential { PhysicianId = "PHY003", PasswordHash = defaultHash, MustResetOnNextLogin = true, CreatedAt = new DateTime(2025,1,1,0,0,0,DateTimeKind.Utc) }
+        );
+
+        // ── Phase 3.6 Task 2 — AppUser entity config ─────────────────────────
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.MustResetOnNextLogin).HasDefaultValue(false);
+            entity.Property(e => e.Role).HasDefaultValue("Physician");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne<Tenant>()
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Seed AppUser records for the 3 test physicians + 1 SuperAdmin.
+        // Same BCrypt hash as PhysicianCredentials for seamless migration.
+        // UserRole rows are not seeded here — populated via invitation code flow.
+        modelBuilder.Entity<AppUser>().HasData(
+            new AppUser
+            {
+                UserId               = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Email                = "ahmed.sana@hospital.ye",
+                PasswordHash         = defaultHash,
+                FullName             = "Dr. Ahmed Al-Sana",
+                Role                 = "Physician",
+                IsActive             = true,
+                MustResetOnNextLogin = true,
+                CreatedAt            = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new AppUser
+            {
+                UserId               = Guid.Parse("00000000-0000-0000-0000-000000000002"),
+                Email                = "fatima.hakim@clinic.ye",
+                PasswordHash         = defaultHash,
+                FullName             = "Dr. Fatima Al-Hakim",
+                Role                 = "Physician",
+                IsActive             = true,
+                MustResetOnNextLogin = true,
+                CreatedAt            = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new AppUser
+            {
+                UserId               = Guid.Parse("00000000-0000-0000-0000-000000000003"),
+                Email                = "mohammed.z@diabetes.ye",
+                PasswordHash         = defaultHash,
+                FullName             = "Dr. Mohammed Al-Zubairi",
+                Role                 = "Physician",
+                IsActive             = true,
+                MustResetOnNextLogin = true,
+                CreatedAt            = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new AppUser
+            {
+                UserId               = Guid.Parse("00000000-0000-0000-0000-000000000099"),
+                Email                = "admin@muafaplus.com",
+                PasswordHash         = defaultHash,
+                FullName             = "Muafa+ Super Admin",
+                Role                 = "SuperAdmin",
+                IsActive             = true,
+                MustResetOnNextLogin = true,
+                CreatedAt            = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            }
         );
     }
 }
