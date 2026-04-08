@@ -63,27 +63,6 @@ namespace MuafaPlus.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.UpdateData(
-                table: "Physicians",
-                keyColumn: "PhysicianId",
-                keyValue: "PHY001",
-                columns: new string[0],
-                values: new object[0]);
-
-            migrationBuilder.UpdateData(
-                table: "Physicians",
-                keyColumn: "PhysicianId",
-                keyValue: "PHY002",
-                columns: new string[0],
-                values: new object[0]);
-
-            migrationBuilder.UpdateData(
-                table: "Physicians",
-                keyColumn: "PhysicianId",
-                keyValue: "PHY003",
-                columns: new string[0],
-                values: new object[0]);
-
             migrationBuilder.CreateIndex(
                 name: "IX_ChatMessages_ThreadId_SentAt",
                 table: "ChatMessages",
