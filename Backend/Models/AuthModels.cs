@@ -20,10 +20,15 @@ public class LoginRequest
 public class LoginResponse
 {
     public string Token        { get; set; } = string.Empty;
+    /// <summary>Phase 3.6: unified user ID (Guid string).</summary>
+    public string UserId       { get; set; } = string.Empty;
+    /// <summary>Legacy — populated for physician accounts, empty for SuperAdmin.</summary>
     public string PhysicianId  { get; set; } = string.Empty;
     public string FullName     { get; set; } = string.Empty;
     public string Specialty    { get; set; } = string.Empty;
     public string? Institution { get; set; }
+    /// <summary>Phase 3.6: role of the authenticated user.</summary>
+    public string Role         { get; set; } = string.Empty;
     public DateTime ExpiresAt  { get; set; }
     public bool MustResetOnNextLogin { get; set; }
 }
@@ -65,9 +70,19 @@ public class ChangePasswordRequest
 
 public static class ClaimNames
 {
+    /// <summary>
+    /// Maps to ClaimTypes.NameIdentifier.
+    /// For physician accounts this carries the PhysicianId string (e.g. "PHY001")
+    /// for backward compatibility with all existing controllers.
+    /// </summary>
     public const string PhysicianId = System.Security.Claims.ClaimTypes.NameIdentifier;
     public const string FullName    = System.Security.Claims.ClaimTypes.Name;
     public const string Email       = System.Security.Claims.ClaimTypes.Email;
     public const string Specialty   = "specialty";
     public const string Institution = "institution";
+
+    // Phase 3.6 additions
+    public const string UserId   = "UserId";
+    public const string Role     = "Role";
+    public const string TenantId = "TenantId";
 }

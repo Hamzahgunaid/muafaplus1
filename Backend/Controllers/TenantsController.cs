@@ -32,6 +32,7 @@ public class TenantsController : ControllerBase
 
     /// <summary>Returns all tenants ordered by creation date (newest first).</summary>
     [HttpGet]
+    [Authorize(Roles = "SuperAdmin")]
     [ProducesResponseType(typeof(ApiResponse<List<TenantResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<TenantResponse>>>> GetAll()
     {
@@ -49,6 +50,7 @@ public class TenantsController : ControllerBase
     /// Returns 201 Created with the full TenantResponse.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "SuperAdmin")]
     [ProducesResponseType(typeof(ApiResponse<TenantResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>),         StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<TenantResponse>>> Create(
