@@ -21,7 +21,20 @@ export default function LoginPage() {
       const res = await authApi.login(data);
       if (res.success && res.data) {
         login(res.data);
-        router.push(res.data.mustResetOnNextLogin ? "/change-password" : "/dashboard");
+        if (res.data.mustResetOnNextLogin) {
+          router.push("/change-password");
+        } else {
+          switch (res.data.role) {
+            case "SuperAdmin":
+            case "HospitalAdmin":
+              router.push("/admin");
+              break;
+            case "Physician":
+            case "Assistant":
+            default:
+              router.push("/dashboard");
+          }
+        }
       } else {
         setError(res.error ?? "فشل تسجيل الدخول");
       }
