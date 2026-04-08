@@ -123,11 +123,25 @@ try
 
     var allowedOrigins = builder.Configuration
         .GetSection("Cors:AllowedOrigins")
-        .Get<string[]>()
-        ?? new[] { "http://localhost:3000", "https://localhost:3000" };
+        .Get<string[]>();
+
+    // Defensive fallback — log what we got
+    if (allowedOrigins == null || allowedOrigins.Length == 0)
+    {
+        allowedOrigins = new[] {
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "https://muafaplus1.vercel.app"
+        };
+        Console.WriteLine("CORS: Using hardcoded fallback origins");
+    }
+    else
+    {
+        Console.WriteLine($"CORS: Loaded {allowedOrigins.Length} origins: {string.Join(", ", allowedOrigins)}");
+    }
 
     builder.Services.AddCors(opts =>
-        opts.AddDefaultPolicy(policy =>
+        opts.AddPolicy("MuafaPolicy", policy =>
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyMethod()
                   .AllowAnyHeader()
@@ -185,7 +199,7 @@ try
     if (app.Environment.IsDevelopment())
         app.UseHttpsRedirection();
     app.UseRouting();
-    app.UseCors();
+    app.UseCors("MuafaPolicy");
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();
