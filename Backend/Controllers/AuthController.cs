@@ -128,7 +128,8 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Changes the authenticated physician's password.
+    /// Changes the authenticated user's password.
+    /// Phase 3.6: operates on AppUser.PasswordHash (login source of truth).
     /// Clears MustResetOnNextLogin on success.
     /// </summary>
     [HttpPost("change-password")]
@@ -153,17 +154,29 @@ public class AuthController : ControllerBase
                 }
             });
 
-        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
-        if (string.IsNullOrEmpty(physicianId))
-            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+        // Phase 3.6: look up AppUser using the UserId claim (Guid),
+        // falling back to email claim if NameIdentifier carries PhysicianId string.
+        AppUser? user = null;
 
-        var credential = await _db.PhysicianCredentials.FindAsync(physicianId);
-        if (credential == null)
-            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+        var rawId = User.FindFirst(ClaimNames.UserId)?.Value
+                 ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, credential.PasswordHash))
+        if (!string.IsNullOrEmpty(rawId) && Guid.TryParse(rawId, out var userGuid))
+            user = await _db.Users.FindAsync(userGuid);
+
+        if (user == null)
         {
-            _logger.LogWarning("Change-password: wrong current password — physician:{Id}", physicianId);
+            var email = User.FindFirst(ClaimNames.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+                user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+        }
+
+        if (user == null)
+            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+        {
+            _logger.LogWarning("Change-password: wrong current password — user:{Email}", user.Email);
             return BadRequest(new ApiResponse<object>
             {
                 Success = false,
@@ -171,16 +184,16 @@ public class AuthController : ControllerBase
             });
         }
 
-        credential.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
-        credential.MustResetOnNextLogin = false;
+        user.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
+        user.MustResetOnNextLogin = false;
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Password changed — physician:{Id}", physicianId);
+        _logger.LogInformation("Password changed — user:{Email}", user.Email);
 
         return Ok(new ApiResponse<object>
         {
-            Success = true,
-            Metadata = new Dictionary<string, object> { ["physician_id"] = physicianId }
+            Success  = true,
+            Metadata = new Dictionary<string, object> { ["user_id"] = user.UserId.ToString() }
         });
     }
 

@@ -5,12 +5,33 @@ for post-diagnosis patient care in Yemen. Physicians refer patients and the
 system generates personalised Arabic health education articles via Claude AI,
 delivered through WhatsApp and a Flutter mobile app.
 
-## Current State — Phase 3.5 Complete
+## Current State — Phase 3.6 Complete (April 2026)
 Production is LIVE:
 - Frontend: https://muafaplus1.vercel.app
 - Backend: https://muafaplus1-production.up.railway.app
 - Database: PostgreSQL on Railway (NOT SQL Server)
 - GitHub: https://github.com/Hamzahgunaid/muafaplus1
+
+### Phase 3.6 — Unified Auth + Role Enforcement (complete)
+- AppUser table: single source of truth for all provider logins (replaces PhysicianCredentials)
+- Login reads AppUser.PasswordHash; physician backward-compat claims populated from Physicians table
+- JWT carries Role + UserId + TenantId claims; RoleClaimType = "Role" enables [Authorize(Roles)]
+- ChangePassword updates AppUser.PasswordHash (previously updated PhysicianCredentials only — fixed)
+- UserRole.UserId type fixed string → Guid (matches AppUser.UserId uuid in PostgreSQL)
+- TenantsController: GET/POST gated to SuperAdmin; GenerateInvitationCode gated to SuperAdmin,HospitalAdmin
+- Frontend: role-based redirect on login (SuperAdmin/HospitalAdmin → /admin; Physician/Assistant → /dashboard)
+- Role guards on /admin (non-admins → /dashboard) and /dashboard (admins → /admin)
+- TenantsCard: SuperAdmin sees all tenants; HospitalAdmin fetches own tenant only
+
+### Test accounts (all use password: MuafaPlus2025!)
+| Email | Role | PhysicianId |
+|-------|------|-------------|
+| ahmed.sana@hospital.ye | Physician | PHY001 |
+| fatima.hakim@clinic.ye | Physician | PHY002 |
+| mohammed.z@diabetes.ye | Physician | PHY003 |
+| superadmin@afyahwise.com | SuperAdmin | — |
+
+Test invitation code: PH-TEST01 (Physician role, expires 2027-01-01)
 
 ## Technology Stack
 - Backend: .NET 8 ASP.NET Core Web API (Railway, Docker)
@@ -116,15 +137,23 @@ Login returns ApiResponse<T> wrapper. Token is at data.data.token:
   "success": true,
   "data": {
     "token": "eyJ...",
+    "userId": "00000000-0000-0000-0000-000000000001",
     "physicianId": "PHY001",
     "fullName": "Dr. Ahmed Al-Sana",
     "specialty": "Internal Medicine",
     "institution": "Sana'a General Hospital",
+    "role": "Physician",
+    "tenantId": "00000000-0000-0000-0000-000000000010",
     "expiresAt": "2026-...",
     "mustResetOnNextLogin": false
   },
   "error": null
 }
+
+Fields added in Phase 3.6:
+- userId — AppUser.UserId (Guid) — used for ChangePassword lookup
+- role — string: "SuperAdmin" | "HospitalAdmin" | "Physician" | "Assistant"
+- tenantId — Guid? (null for SuperAdmin)
 
 ## Key service files
 Backend/Services/InvitationCodeService.cs — validate + generate codes
