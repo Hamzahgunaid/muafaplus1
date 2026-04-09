@@ -25,14 +25,11 @@ export default function LoginPage() {
           router.push("/change-password");
         } else {
           switch (res.data.role) {
-            case "SuperAdmin":
-            case "HospitalAdmin":
-              router.push("/admin");
-              break;
+            case "SuperAdmin":    router.push("/super-admin/dashboard"); break;
+            case "HospitalAdmin": router.push("/hospital/dashboard");    break;
+            case "Assistant":     router.push("/assistant/dashboard");   break;
             case "Physician":
-            case "Assistant":
-            default:
-              router.push("/dashboard");
+            default:              router.push("/dashboard");
           }
         }
       } else {
