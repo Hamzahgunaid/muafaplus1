@@ -216,6 +216,11 @@ export const tenantApi = {
     return data;
   },
 
+  getTenant: async (tenantId: string): Promise<ApiResponse<TenantResponse>> => {
+    const { data } = await http.get<ApiResponse<TenantResponse>>(`/tenants/${tenantId}`);
+    return data;
+  },
+
   createTenant: async (req: CreateTenantRequest): Promise<ApiResponse<TenantResponse>> => {
     const { data } = await http.post<ApiResponse<TenantResponse>>("/tenants", req);
     return data;

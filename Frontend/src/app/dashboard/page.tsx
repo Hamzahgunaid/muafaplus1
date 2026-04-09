@@ -30,14 +30,17 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function DashboardPage() {
   const router    = useRouter();
-  const { isLoggedIn, physician } = useAuthStore();
+  const { isLoggedIn, physician, role } = useAuthStore();
   const [sessions, setSessions]   = useState<SessionSummary[]>([]);
   const [loading, setLoading]     = useState(true);
   const [page, setPage]           = useState(1);
 
   useEffect(() => {
     if (!isLoggedIn) { router.push("/login"); return; }
-  }, [isLoggedIn, router]);
+    if (role === "SuperAdmin" || role === "HospitalAdmin") {
+      router.push("/admin"); return;
+    }
+  }, [isLoggedIn, role, router]);
 
   const fetchSessions = useCallback(async () => {
     if (!physician) return;
@@ -53,6 +56,7 @@ export default function DashboardPage() {
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
   if (!isLoggedIn || !physician) return null;
+  if (role === "SuperAdmin" || role === "HospitalAdmin") return null;
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -9,6 +9,7 @@ export interface LoginResponse {
   token:       string;
   userId:      string;
   role:        string;
+  tenantId:    string | null;
   physicianId: string;
   fullName:    string;
   specialty:   string;

@@ -29,6 +29,8 @@ public class LoginResponse
     public string? Institution { get; set; }
     /// <summary>Phase 3.6: role of the authenticated user.</summary>
     public string Role         { get; set; } = string.Empty;
+    /// <summary>Phase 3.6: tenant scope. Null for SuperAdmin (global).</summary>
+    public Guid?  TenantId     { get; set; }
     public DateTime ExpiresAt  { get; set; }
     public bool MustResetOnNextLogin { get; set; }
 }
