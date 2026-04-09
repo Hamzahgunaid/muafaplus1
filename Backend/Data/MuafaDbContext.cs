@@ -190,10 +190,15 @@ public class MuafaDbContext : DbContext
         });
 
         // ── UserRole (composite PK: UserId + TenantId) ────────────────────────
+        // Phase 3.6: UserId is now Guid FK → AppUser.UserId (was string/text)
         modelBuilder.Entity<UserRole>(entity =>
         {
             entity.HasKey(e => new { e.UserId, e.TenantId });
             entity.HasIndex(e => new { e.UserId, e.TenantId });
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.Tenant)
                   .WithMany(t => t.UserRoles)
                   .HasForeignKey(e => e.TenantId)
