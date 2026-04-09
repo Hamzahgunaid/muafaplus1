@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
 import { testScenarioApi } from "@/services/api";
 import NavBar from "@/components/NavBar";
-import type { AgeGroup, TestScenarioResponse, WorkflowResult } from "@/types";
+import type { AgeGroup, TestScenarioResponse, Stage1Output } from "@/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -88,9 +88,9 @@ export default function NewTestScenarioPage() {
   // ── Success preview ─────────────────────────────────────────────────────────
   if (success) {
     const generated = parseGeneratedContent(success.generatedContentJson);
-    const riskLevel = generated?.riskAssessment?.riskLevel ?? null;
-    const summary   = generated?.summaryArticle ?? null;
-    const articles  = generated?.detailedArticles ?? [];
+    const riskLevel = generated?.risk_assessment?.RiskLevel ?? null;
+    const summary   = generated?.summary_article ?? null;
+    const articles  = generated?.article_outlines ?? [];
 
     return (
       <div className="min-h-screen flex flex-col">
@@ -146,7 +146,7 @@ export default function NewTestScenarioPage() {
                   <ol className="space-y-1 list-decimal list-inside">
                     {articles.map((a, i) => (
                       <li key={i} className="text-sm text-gray-700">
-                        {a.titleAr || a.titleEn || `مقالة ${i + 1}`}
+                        {a.TitleAr || a.TitleEn || `مقالة ${i + 1}`}
                       </li>
                     ))}
                   </ol>
@@ -294,9 +294,9 @@ export default function NewTestScenarioPage() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function parseGeneratedContent(json: string | null): WorkflowResult | null {
+function parseGeneratedContent(json: string | null): Stage1Output | null {
   if (!json) return null;
-  try { return JSON.parse(json) as WorkflowResult; } catch { return null; }
+  try { return JSON.parse(json) as Stage1Output; } catch { return null; }
 }
 
 const inp = (err: boolean) =>

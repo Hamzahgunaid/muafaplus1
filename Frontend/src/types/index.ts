@@ -196,6 +196,42 @@ export interface ReferralEngagementResponse {
   feedbackSubmittedAt:  string | null;
 }
 
+// ── Stage1Output — matches Backend/Models/ArticleModels.cs Stage1Output ──────
+// JSON keys match [JsonPropertyName] attributes exactly.
+// Fields without [JsonPropertyName] serialize as PascalCase (C# default).
+
+export interface ArticleOutline {
+  ArticleId:          string;
+  TitleAr:            string;
+  TitleEn:            string;
+  CoverageCodes:      string[];
+  Priority:           string;
+  EstimatedWordCount: string;
+  KeyTopics:          string[];
+  Rationale:          string;
+}
+
+export interface Stage1Output {
+  risk_assessment: {
+    AcuteFactors:      string[];
+    AcutePoints:       number;
+    ComplexityFactors: string[];
+    ComplexityPoints:  number;
+    ProtectiveFactors: string[];
+    ProtectivePoints:  number;
+    TotalScore:        number;
+    RiskLevel:         string;
+    Rationale:         string;
+  };
+  summary_article:  string;
+  article_outlines: ArticleOutline[];
+  metadata: {
+    total_articles:       number;
+    generation_timestamp: string;
+    ramadan_period:       boolean;
+  };
+}
+
 // ── Test Scenarios ────────────────────────────────────────────────────────────
 
 export interface CreateTestScenarioRequest {
