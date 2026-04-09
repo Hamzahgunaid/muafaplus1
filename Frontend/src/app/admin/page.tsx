@@ -48,13 +48,19 @@ interface GeneratedCode {
 
 export default function AdminPage() {
   const router = useRouter();
-  const { isLoggedIn, physician } = useAuthStore();
+  const { isLoggedIn, physician, role, userId } = useAuthStore();
 
   useEffect(() => {
-    if (!isLoggedIn) { router.push("/login"); }
-  }, [isLoggedIn, router]);
+    if (!isLoggedIn) { router.push("/login"); return; }
+    if (role && role !== "SuperAdmin" && role !== "HospitalAdmin") {
+      router.push("/dashboard");
+    }
+  }, [isLoggedIn, role, router]);
 
   if (!isLoggedIn) return null;
+  if (role && role !== "SuperAdmin" && role !== "HospitalAdmin") return null;
+
+  const isSuperAdmin = role === "SuperAdmin";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -62,7 +68,7 @@ export default function AdminPage() {
       <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-8">
         <h1 className="text-xl font-bold text-gray-900 mb-6">لوحة الإدارة</h1>
         <div className="space-y-6">
-          <TenantsCard />
+          <TenantsCard isSuperAdmin={isSuperAdmin} />
           <InvitationCodeCard />
           <ChatSettingsCard physicianId={physician?.physicianId ?? ""} />
         </div>
@@ -73,7 +79,7 @@ export default function AdminPage() {
 
 // ── Section 1: Tenants ────────────────────────────────────────────────────────
 
-function TenantsCard() {
+function TenantsCard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [tenants,    setTenants]    = useState<TenantResponse[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
@@ -89,15 +95,23 @@ function TenantsCard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await tenantApi.getTenants();
-      if (res.success && res.data) setTenants(res.data);
-      else setError(res.error ?? "تعذر تحميل المؤسسات");
+      if (isSuperAdmin) {
+        const res = await tenantApi.getTenants();
+        if (res.success && res.data) setTenants(res.data);
+        else setError(res.error ?? "تعذر تحميل المؤسسات");
+      } else {
+        const tenantId = localStorage.getItem("muafa_tenantid");
+        if (!tenantId) { setError("تعذر تحديد المؤسسة"); setLoading(false); return; }
+        const res = await tenantApi.getTenant(tenantId);
+        if (res.success && res.data) setTenants([res.data]);
+        else setError(res.error ?? "تعذر تحميل بيانات المؤسسة");
+      }
     } catch {
       setError("خطأ في الاتصال");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSuperAdmin]);
 
   useEffect(() => { fetchTenants(); }, [fetchTenants]);
 
@@ -225,7 +239,7 @@ function TenantsCard() {
         </form>
       )}
 
-      {!showForm && (
+      {!showForm && isSuperAdmin && (
         <button
           onClick={() => setShowForm(true)}
           className="mt-3 px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition"

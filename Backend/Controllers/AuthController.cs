@@ -120,6 +120,7 @@ public class AuthController : ControllerBase
                 Specialty            = physician?.Specialty   ?? string.Empty,
                 Institution          = physician?.Institution,
                 Role                 = user.Role,
+                TenantId             = user.TenantId,
                 ExpiresAt            = DateTime.UtcNow.AddHours(expiryHours),
                 MustResetOnNextLogin = user.MustResetOnNextLogin
             }
