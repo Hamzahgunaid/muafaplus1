@@ -209,6 +209,8 @@ export interface CreateTestScenarioRequest {
 
 export interface ContentEvaluationResponse {
   evaluationId:          string;
+  scenarioId:            string;
+  physicianId:           string;
   accuracyRating:        number;
   clarityRating:         number;
   relevanceRating:       number;
@@ -224,6 +226,8 @@ export interface ContentEvaluationResponse {
 
 export interface TestScenarioResponse {
   scenarioId:           string;
+  physicianId:          string;
+  tenantId:             string;
   status:               string;
   patientDataJson:      string;
   generatedContentJson: string | null;

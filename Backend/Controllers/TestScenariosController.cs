@@ -128,6 +128,37 @@ public class TestScenariosController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/v1/test-scenarios
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns all test scenarios for the authenticated physician, newest first.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<List<TestScenarioResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<TestScenarioResponse>>>> GetTestScenarios()
+    {
+        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+            return Unauthorized(new ApiResponse<List<TestScenarioResponse>>
+            {
+                Success = false, Error = "غير مصرح", ErrorType = "MissingPhysicianClaim"
+            });
+
+        var scenarios = await _db.TestScenarios
+            .Include(s => s.Evaluation)
+            .Where(s => s.PhysicianId == physicianId)
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+
+        return Ok(new ApiResponse<List<TestScenarioResponse>>
+        {
+            Success = true,
+            Data    = scenarios.Select(MapToResponse).ToList()
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // GET /api/v1/test-scenarios/{id}
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -335,32 +366,25 @@ public class TestScenariosController : ControllerBase
         MedicalRestrictions = request.MedicalRestrictions ?? string.Empty
     };
 
-    private TestScenarioResponse MapToResponse(TestScenario scenario)
+    private static TestScenarioResponse MapToResponse(TestScenario scenario) => new()
     {
-        PatientData?  pd      = null;
-        Stage1Output? content = null;
-
-        if (!string.IsNullOrEmpty(scenario.PatientDataJson))
-            pd = JsonSerializer.Deserialize<PatientData>(scenario.PatientDataJson, _jsonOpts);
-
-        if (!string.IsNullOrEmpty(scenario.GeneratedContentJson))
-            content = JsonSerializer.Deserialize<Stage1Output>(scenario.GeneratedContentJson, _jsonOpts);
-
-        return new TestScenarioResponse
-        {
-            ScenarioId       = scenario.ScenarioId,
-            Status           = scenario.Status.ToString(),
-            CreatedAt        = scenario.CreatedAt,
-            PatientData      = pd,
-            GeneratedContent = content,
-            Evaluation       = scenario.Evaluation == null
+        ScenarioId           = scenario.ScenarioId,
+        PhysicianId          = scenario.PhysicianId,
+        TenantId             = scenario.TenantId,
+        Status               = scenario.Status.ToString(),
+        PatientDataJson      = scenario.PatientDataJson,
+        GeneratedContentJson = scenario.GeneratedContentJson,
+        CreatedAt            = scenario.CreatedAt,
+        Evaluation           = scenario.Evaluation == null
                                ? null
                                : MapEvalToResponse(scenario.Evaluation)
-        };
-    }
+    };
 
     private static ContentEvaluationResponse MapEvalToResponse(ContentEvaluation e) => new()
     {
+        EvaluationId          = e.EvaluationId,
+        ScenarioId            = e.ScenarioId,
+        PhysicianId           = e.PhysicianId,
         AccuracyRating        = e.AccuracyRating,
         ClarityRating         = e.ClarityRating,
         RelevanceRating       = e.RelevanceRating,
