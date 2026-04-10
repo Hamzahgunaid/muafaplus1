@@ -345,3 +345,54 @@ export interface GenerateInvitationCodeRequest {
   expiresAt?: string;
   maxUses?:   number;
 }
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export interface UserResponse {
+  userId:    string;
+  email:     string;
+  fullName:  string;
+  role:      string;
+  isActive:  boolean;
+  createdAt: string;
+}
+
+export interface CreateUserRequest {
+  email:    string;
+  fullName: string;
+  role:     string;
+  tenantId: string;
+}
+
+// ── Tenant Settings ───────────────────────────────────────────────────────────
+
+export interface TenantSettingsResponse {
+  tenantId:               string;
+  patientNamePolicy:      string;
+  whatsAppEnabled:        boolean;
+  chatEnabled:            boolean;
+  notificationDelayHours: number;
+}
+
+export interface UpdateTenantSettingsRequest {
+  patientNamePolicy?:      string;
+  whatsAppEnabled?:        boolean;
+  chatEnabled?:            boolean;
+  notificationDelayHours?: number;
+}
+
+// ── Assistant Links ───────────────────────────────────────────────────────────
+
+export interface AssistantLinkResponse {
+  linkId:        string;
+  assistantId:   string;
+  assistantName: string;
+  physicianId:   string;
+  physicianName: string;
+  createdAt:     string;
+}
+
+export interface CreateAssistantLinkRequest {
+  assistantId: string;
+  physicianId: string;
+}

@@ -28,7 +28,7 @@ export default function AssistantDashboard() {
   if (!isLoggedIn || role !== "Assistant") return null;
 
   const total     = referrals.length;
-  const pending   = referrals.filter(r => r.status === "pending" || r.status === "stage1_complete").length;
+  const pending   = referrals.filter(r => r.status === "Created" || r.status === "Stage1Complete").length;
   const delivered = referrals.filter(r => r.deliveredAt).length;
 
   return (
