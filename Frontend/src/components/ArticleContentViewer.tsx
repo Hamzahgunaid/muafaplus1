@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { ArticleOutline } from "@/types";
+import type { ArticleOutline, ReferralArticleResponse } from "@/types";
 
 const RISK_CLASS: Record<string, string> = {
   LOW:      "bg-green-50  text-green-700  border border-green-200",
@@ -14,21 +14,25 @@ const RISK_LABEL: Record<string, string> = {
 };
 
 interface ArticleContentViewerProps {
-  riskLevel:       string | null;
-  summaryArticle:  string | null;
-  articleOutlines: ArticleOutline[];
-  mode:            "referral" | "test-scenario";
-  onGenerate?:     (index: number) => Promise<void>;
+  riskLevel:          string | null;
+  summaryArticle:     string | null;
+  articleOutlines?:   ArticleOutline[];
+  referralArticles?:  ReferralArticleResponse[];
+  mode:               "referral" | "test-scenario";
+  onGenerate?:        (index: number) => Promise<void>;
 }
 
 export default function ArticleContentViewer({
   riskLevel,
   summaryArticle,
   articleOutlines,
+  referralArticles,
+  mode,
   onGenerate,
 }: ArticleContentViewerProps) {
-  const [expanded,   setExpanded]   = useState(false);
-  const [generating, setGenerating] = useState<number | null>(null);
+  const [expanded,      setExpanded]      = useState(false);
+  const [generating,    setGenerating]    = useState<number | null>(null);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const handleGenerate = async (index: number) => {
     if (!onGenerate) return;
@@ -68,14 +72,14 @@ export default function ArticleContentViewer({
         </div>
       )}
 
-      {/* Article outlines */}
-      {articleOutlines.length > 0 && (
+      {/* Test-scenario mode — article outline list with generate buttons */}
+      {(articleOutlines?.length ?? 0) > 0 && (
         <div>
           <p className="text-xs font-medium text-gray-500 mb-2">
-            مخطط المقالات ({articleOutlines.length})
+            مخطط المقالات ({articleOutlines!.length})
           </p>
           <ol className="space-y-2">
-            {articleOutlines.map((outline, i) => (
+            {articleOutlines!.map((outline, i) => (
               <li key={i} className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-gray-700">
                   {i + 1}. {outline.TitleAr || outline.TitleEn || `مقالة ${i + 1}`}
@@ -92,6 +96,50 @@ export default function ArticleContentViewer({
               </li>
             ))}
           </ol>
+        </div>
+      )}
+
+      {/* Referral mode — flat article list from GET /referrals/{id}/articles */}
+      {mode === "referral" && referralArticles && referralArticles.length > 0 && (
+        <div className="border border-gray-100 rounded-xl overflow-hidden">
+          <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+            <span className="font-medium text-sm text-gray-800">المقالات التفصيلية</span>
+            <span className="text-xs text-gray-400 mr-2">
+              ({referralArticles.filter(a => a.articleType === "detailed").length} مقالات)
+            </span>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {referralArticles
+              .filter(a => a.articleType === "detailed")
+              .map((article, index) => {
+                const isExpanded = expandedIndex === index;
+                return (
+                  <div key={article.articleId} className="px-5 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">
+                          مقال {index + 1}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {article.wordCount} كلمة
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setExpandedIndex(isExpanded ? null : index)}
+                        className="text-xs text-brand-600 hover:underline px-3 py-1 rounded-lg border border-brand-200 hover:bg-brand-50 transition shrink-0"
+                      >
+                        {isExpanded ? "إخفاء ▲" : "عرض →"}
+                      </button>
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {article.content_ar}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       )}
     </div>

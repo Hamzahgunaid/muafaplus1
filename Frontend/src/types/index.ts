@@ -185,6 +185,15 @@ export interface ReferralResponse {
   deliveredAt?:         string | null;
 }
 
+export interface ReferralArticleResponse {
+  articleId:     string;
+  articleType:   string;
+  content_ar:    string;
+  coverageCodes: string | null;
+  wordCount:     number;
+  createdAt:     string;
+}
+
 // ── Referral Engagement ───────────────────────────────────────────────────────
 
 export interface ReferralEngagementResponse {

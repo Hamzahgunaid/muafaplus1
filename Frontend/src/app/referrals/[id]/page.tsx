@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
 import { referralApi, chatApi, maskPhone, formatRelativeTime } from "@/services/api";
 import NavBar from "@/components/NavBar";
+import ArticleContentViewer from "@/components/ArticleContentViewer";
 import type {
   ReferralResponse,
   ReferralEngagementResponse,
+  ReferralArticleResponse,
   ChatThreadResponse,
 } from "@/types";
 
@@ -37,6 +39,7 @@ export default function ReferralDetailPage() {
 
   const [referral,    setReferral]    = useState<ReferralResponse | null>(null);
   const [engagement,  setEngagement]  = useState<ReferralEngagementResponse | null>(null);
+  const [articles,    setArticles]    = useState<ReferralArticleResponse[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
 
@@ -54,6 +57,10 @@ export default function ReferralDetailPage() {
       ]);
       if (refRes.success && refRes.data) {
         setReferral(refRes.data);
+        if (refRes.data.sessionId) {
+          const artRes = await referralApi.getArticles(referralId);
+          if (artRes.success && artRes.data) setArticles(artRes.data);
+        }
       } else {
         setError(refRes.error ?? "لم يتم العثور على الإحالة");
       }
@@ -106,6 +113,19 @@ export default function ReferralDetailPage() {
           <div className="space-y-4">
             <InfoCard referral={referral} />
             <TimelineCard referral={referral} engagement={engagement} />
+            {articles.length > 0 && (
+              <Card title="المحتوى المولّد">
+                <ArticleContentViewer
+                  riskLevel={referral.riskLevel ?? null}
+                  summaryArticle={
+                    articles.find(a => a.articleType === "summary")?.content_ar ?? null
+                  }
+                  articleOutlines={[]}
+                  referralArticles={articles}
+                  mode="referral"
+                />
+              </Card>
+            )}
             {referral.sessionId && (
               <ChatCard referralId={referralId} />
             )}
@@ -154,16 +174,6 @@ function InfoCard({ referral: r }: { referral: ReferralResponse }) {
         )}
       </dl>
 
-      {r.sessionId && (
-        <div className="mt-5 pt-5 border-t border-gray-50">
-          <Link
-            href={`/sessions/${r.sessionId}`}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-800 transition"
-          >
-            عرض المقالات المولدة ←
-          </Link>
-        </div>
-      )}
     </Card>
   );
 }

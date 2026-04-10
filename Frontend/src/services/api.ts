@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from "axios";
 import type {
   ApiResponse, LoginRequest, LoginResponse, ChangePasswordRequest, PatientData,
   PhysicianProfile, SessionSummary, SessionDetail, SessionStatus, WorkflowResult,
-  CreateReferralRequest, ReferralResponse, ReferralEngagementResponse,
+  CreateReferralRequest, ReferralResponse, ReferralEngagementResponse, ReferralArticleResponse,
   CreateTestScenarioRequest, TestScenarioResponse, SubmitEvaluationRequest, ContentEvaluationResponse,
   ChatThreadResponse, ChatMessageResponse,
   TenantResponse, TenantSubscriptionSummary, CreateTenantRequest, GenerateInvitationCodeRequest,
@@ -146,6 +146,11 @@ export const referralApi = {
 
   getEngagement: async (id: string): Promise<ApiResponse<ReferralEngagementResponse>> => {
     const { data } = await http.get<ApiResponse<ReferralEngagementResponse>>(`/referrals/${id}/engagement`);
+    return data;
+  },
+
+  getArticles: async (id: string): Promise<ApiResponse<ReferralArticleResponse[]>> => {
+    const { data } = await http.get<ApiResponse<ReferralArticleResponse[]>>(`/referrals/${id}/articles`);
     return data;
   },
 };
