@@ -442,11 +442,13 @@ public class CreateTestScenarioRequest
 
 public class TestScenarioResponse
 {
-    public Guid      ScenarioId       { get; set; }
-    public string    Status           { get; set; } = string.Empty;
-    public DateTime  CreatedAt        { get; set; }
-    public PatientData?    PatientData      { get; set; }
-    public Stage1Output?   GeneratedContent { get; set; }
+    public Guid     ScenarioId           { get; set; }
+    public string   PhysicianId          { get; set; } = string.Empty;
+    public Guid     TenantId             { get; set; }
+    public string   Status               { get; set; } = string.Empty;
+    public string   PatientDataJson      { get; set; } = string.Empty;
+    public string?  GeneratedContentJson { get; set; }
+    public DateTime CreatedAt            { get; set; }
     public ContentEvaluationResponse? Evaluation { get; set; }
 }
 
@@ -468,6 +470,10 @@ public class SubmitEvaluationRequest
 
 public class ContentEvaluationResponse
 {
+    public Guid   EvaluationId  { get; set; }
+    public Guid   ScenarioId    { get; set; }
+    public string PhysicianId   { get; set; } = string.Empty;
+
     public int  AccuracyRating      { get; set; }
     public int  ClarityRating       { get; set; }
     public int  RelevanceRating     { get; set; }

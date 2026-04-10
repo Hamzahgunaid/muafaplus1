@@ -196,6 +196,42 @@ export interface ReferralEngagementResponse {
   feedbackSubmittedAt:  string | null;
 }
 
+// ── Stage1Output — matches Backend/Models/ArticleModels.cs Stage1Output ──────
+// JSON keys match [JsonPropertyName] attributes exactly.
+// Fields without [JsonPropertyName] serialize as PascalCase (C# default).
+
+export interface ArticleOutline {
+  ArticleId:          string;
+  TitleAr:            string;
+  TitleEn:            string;
+  CoverageCodes:      string[];
+  Priority:           string;
+  EstimatedWordCount: string;
+  KeyTopics:          string[];
+  Rationale:          string;
+}
+
+export interface Stage1Output {
+  risk_assessment: {
+    AcuteFactors:      string[];
+    AcutePoints:       number;
+    ComplexityFactors: string[];
+    ComplexityPoints:  number;
+    ProtectiveFactors: string[];
+    ProtectivePoints:  number;
+    TotalScore:        number;
+    RiskLevel:         string;
+    Rationale:         string;
+  };
+  summary_article:  string;
+  article_outlines: ArticleOutline[];
+  metadata: {
+    total_articles:       number;
+    generation_timestamp: string;
+    ramadan_period:       boolean;
+  };
+}
+
 // ── Test Scenarios ────────────────────────────────────────────────────────────
 
 export interface CreateTestScenarioRequest {
@@ -209,6 +245,8 @@ export interface CreateTestScenarioRequest {
 
 export interface ContentEvaluationResponse {
   evaluationId:          string;
+  scenarioId:            string;
+  physicianId:           string;
   accuracyRating:        number;
   clarityRating:         number;
   relevanceRating:       number;
@@ -224,6 +262,8 @@ export interface ContentEvaluationResponse {
 
 export interface TestScenarioResponse {
   scenarioId:           string;
+  physicianId:          string;
+  tenantId:             string;
   status:               string;
   patientDataJson:      string;
   generatedContentJson: string | null;
@@ -304,4 +344,55 @@ export interface GenerateInvitationCodeRequest {
   tenantId?:  string;
   expiresAt?: string;
   maxUses?:   number;
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export interface UserResponse {
+  userId:    string;
+  email:     string;
+  fullName:  string;
+  role:      string;
+  isActive:  boolean;
+  createdAt: string;
+}
+
+export interface CreateUserRequest {
+  email:    string;
+  fullName: string;
+  role:     string;
+  tenantId: string;
+}
+
+// ── Tenant Settings ───────────────────────────────────────────────────────────
+
+export interface TenantSettingsResponse {
+  tenantId:               string;
+  patientNamePolicy:      string;
+  whatsAppEnabled:        boolean;
+  chatEnabled:            boolean;
+  notificationDelayHours: number;
+}
+
+export interface UpdateTenantSettingsRequest {
+  patientNamePolicy?:      string;
+  whatsAppEnabled?:        boolean;
+  chatEnabled?:            boolean;
+  notificationDelayHours?: number;
+}
+
+// ── Assistant Links ───────────────────────────────────────────────────────────
+
+export interface AssistantLinkResponse {
+  linkId:        string;
+  assistantId:   string;
+  assistantName: string;
+  physicianId:   string;
+  physicianName: string;
+  createdAt:     string;
+}
+
+export interface CreateAssistantLinkRequest {
+  assistantId: string;
+  physicianId: string;
 }

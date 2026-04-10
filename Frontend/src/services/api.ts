@@ -5,7 +5,10 @@ import type {
   CreateReferralRequest, ReferralResponse, ReferralEngagementResponse,
   CreateTestScenarioRequest, TestScenarioResponse, SubmitEvaluationRequest, ContentEvaluationResponse,
   ChatThreadResponse, ChatMessageResponse,
-  TenantResponse, CreateTenantRequest, GenerateInvitationCodeRequest,
+  TenantResponse, TenantSubscriptionSummary, CreateTenantRequest, GenerateInvitationCodeRequest,
+  UserResponse, CreateUserRequest,
+  TenantSettingsResponse, UpdateTenantSettingsRequest,
+  AssistantLinkResponse, CreateAssistantLinkRequest,
 } from "@/types";
 
 // Set NEXT_PUBLIC_API_URL in .env.local (dev) or Vercel environment variables (production).
@@ -233,6 +236,66 @@ export const tenantApi = {
       "/auth/invitation-codes/generate",
       req
     );
+    return data;
+  },
+};
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export const userApi = {
+  getUsersByTenant: async (tenantId: string): Promise<ApiResponse<UserResponse[]>> => {
+    const { data } = await http.get<ApiResponse<UserResponse[]>>(`/tenants/${tenantId}/users`);
+    return data;
+  },
+
+  createUser: async (req: CreateUserRequest): Promise<ApiResponse<UserResponse>> => {
+    const { data } = await http.post<ApiResponse<UserResponse>>(`/tenants/${req.tenantId}/users`, req);
+    return data;
+  },
+};
+
+// ── Tenant Settings ───────────────────────────────────────────────────────────
+
+export const tenantSettingsApi = {
+  getSettings: async (tenantId: string): Promise<ApiResponse<TenantSettingsResponse>> => {
+    const { data } = await http.get<ApiResponse<TenantSettingsResponse>>(`/tenants/${tenantId}/settings`);
+    return data;
+  },
+
+  updateSettings: async (
+    tenantId: string,
+    req: UpdateTenantSettingsRequest
+  ): Promise<ApiResponse<TenantSettingsResponse>> => {
+    const { data } = await http.put<ApiResponse<TenantSettingsResponse>>(`/tenants/${tenantId}/settings`, req);
+    return data;
+  },
+};
+
+// ── Assistant Links ───────────────────────────────────────────────────────────
+
+export const assistantLinkApi = {
+  getLinks: async (tenantId: string): Promise<ApiResponse<AssistantLinkResponse[]>> => {
+    const { data } = await http.get<ApiResponse<AssistantLinkResponse[]>>(`/tenants/${tenantId}/assistant-links`);
+    return data;
+  },
+
+  createLink: async (
+    tenantId: string,
+    req: CreateAssistantLinkRequest
+  ): Promise<ApiResponse<AssistantLinkResponse>> => {
+    const { data } = await http.post<ApiResponse<AssistantLinkResponse>>(
+      `/tenants/${tenantId}/assistant-links`,
+      req
+    );
+    return data;
+  },
+};
+
+// ── Subscription ──────────────────────────────────────────────────────────────
+
+export const subscriptionApi = {
+  getSubscription: async (tenantId: string): Promise<ApiResponse<TenantSubscriptionSummary>> => {
+    const { data } = await http.get<ApiResponse<TenantSubscriptionSummary>>(`/tenants/${tenantId}/subscription`);
     return data;
   },
 };

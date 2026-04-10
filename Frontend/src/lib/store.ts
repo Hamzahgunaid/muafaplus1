@@ -7,6 +7,7 @@ interface AuthState {
   isLoggedIn: boolean;
   role:       string | null;
   userId:     string | null;
+  fullName:   string | null;
   tenantId:   string | null;
 
   login:  (response: LoginResponse) => void;
@@ -20,12 +21,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoggedIn: typeof window !== "undefined" ? !!localStorage.getItem("muafa_token") : false,
   role:       typeof window !== "undefined" ? localStorage.getItem("muafa_role")     : null,
   userId:     typeof window !== "undefined" ? localStorage.getItem("muafa_userid")   : null,
+  fullName:   typeof window !== "undefined" ? localStorage.getItem("muafa_fullname") : null,
   tenantId:   typeof window !== "undefined" ? localStorage.getItem("muafa_tenantid") : null,
 
   login: (response) => {
     localStorage.setItem("muafa_token",    response.token);
     localStorage.setItem("muafa_role",     response.role);
     localStorage.setItem("muafa_userid",   response.userId);
+    localStorage.setItem("muafa_fullname", response.fullName);
     localStorage.setItem("muafa_tenantid", response.tenantId ?? "");
     localStorage.setItem("muafa_user", JSON.stringify({
       physicianId:  response.physicianId,
@@ -48,6 +51,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       isLoggedIn: true,
       role:       response.role,
       userId:     response.userId,
+      fullName:   response.fullName,
       tenantId:   response.tenantId ?? null,
     });
   },
@@ -57,8 +61,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem("muafa_user");
     localStorage.removeItem("muafa_role");
     localStorage.removeItem("muafa_userid");
+    localStorage.removeItem("muafa_fullname");
     localStorage.removeItem("muafa_tenantid");
-    set({ token: null, physician: null, isLoggedIn: false, role: null, userId: null, tenantId: null });
+    set({ token: null, physician: null, isLoggedIn: false, role: null, userId: null, fullName: null, tenantId: null });
   },
 
   setPhysician: (p) => set({ physician: p }),

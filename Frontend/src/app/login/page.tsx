@@ -24,16 +24,7 @@ export default function LoginPage() {
         if (res.data.mustResetOnNextLogin) {
           router.push("/change-password");
         } else {
-          switch (res.data.role) {
-            case "SuperAdmin":
-            case "HospitalAdmin":
-              router.push("/admin");
-              break;
-            case "Physician":
-            case "Assistant":
-            default:
-              router.push("/dashboard");
-          }
+          router.push("/dashboard");
         }
       } else {
         setError(res.error ?? "فشل تسجيل الدخول");
@@ -55,7 +46,7 @@ export default function LoginPage() {
             <span className="text-white text-2xl font-bold">م+</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">معافى+</h1>
-          <p className="text-gray-500 text-sm mt-1">لوحة تحكم الطبيب</p>
+          <p className="text-gray-500 text-sm mt-1">منصة معافى+ الطبية</p>
         </div>
 
         {/* Card */}
