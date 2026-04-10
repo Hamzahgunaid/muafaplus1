@@ -8,27 +8,27 @@ type NavLink = { label: string; href: string };
 function getNavLinks(role: string | null): NavLink[] {
   switch (role) {
     case "SuperAdmin":
-      return [
-        { label: "الرئيسية",    href: "/super-admin/dashboard" },
-        { label: "المستأجرون", href: "/admin" },
-      ];
     case "HospitalAdmin":
       return [
-        { label: "الرئيسية",  href: "/hospital/dashboard" },
-        { label: "الإحالات",  href: "/referrals" },
-        { label: "الاشتراك",  href: "/hospital/subscription" },
+        { label: "الرئيسية",            href: "/dashboard" },
+        { label: "الإحالات",            href: "/referrals" },
+        { label: "سيناريوهات الاختبار", href: "/test-scenarios" },
+        { label: "الإدارة",             href: "/admin" },
+      ];
+    case "Physician":
+      return [
+        { label: "الرئيسية",            href: "/dashboard" },
+        { label: "الإحالات",            href: "/referrals" },
+        { label: "سيناريوهات الاختبار", href: "/test-scenarios" },
       ];
     case "Assistant":
       return [
-        { label: "الرئيسية",    href: "/assistant/dashboard" },
-        { label: "إحالة جديدة", href: "/referrals/new" },
+        { label: "الرئيسية", href: "/dashboard" },
+        { label: "الإحالات", href: "/referrals" },
       ];
-    case "Physician":
     default:
       return [
-        { label: "الرئيسية",              href: "/dashboard" },
-        { label: "الإحالات",              href: "/referrals" },
-        { label: "سيناريوهات",            href: "/test-scenarios" },
+        { label: "الرئيسية", href: "/dashboard" },
       ];
   }
 }
@@ -84,7 +84,7 @@ export default function NavBar() {
 
       {/* Actions */}
       <div className="flex items-center gap-4">
-        {(role === "Physician" || role === "Assistant") && (
+        {role !== null && (
           <Link
             href="/referrals/new"
             className="px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-800 transition"
