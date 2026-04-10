@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import type { ArticleOutline, ReferralArticleResponse } from "@/types";
 
 const RISK_CLASS: Record<string, string> = {
@@ -12,6 +13,17 @@ const RISK_CLASS: Record<string, string> = {
 const RISK_LABEL: Record<string, string> = {
   LOW: "منخفض", MODERATE: "متوسط", HIGH: "مرتفع", CRITICAL: "حرج",
 };
+
+function extractTitle(content: string): string | null {
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("# ")) {
+      return trimmed.replace(/^#+\s*/, "").trim();
+    }
+  }
+  return null;
+}
 
 interface ArticleContentViewerProps {
   riskLevel:          string | null;
@@ -58,10 +70,10 @@ export default function ArticleContentViewer({
         <div>
           <p className="text-xs font-medium text-gray-500 mb-2">الملخص الصحي</p>
           <div
-            className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-4 overflow-y-auto"
+            className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-4 overflow-y-auto prose prose-sm max-w-none rtl"
             style={{ maxHeight: expanded ? "none" : "400px" }}
           >
-            {summaryArticle}
+            <ReactMarkdown>{summaryArticle}</ReactMarkdown>
           </div>
           <button
             onClick={() => setExpanded(!expanded)}
@@ -113,12 +125,13 @@ export default function ArticleContentViewer({
               .filter(a => a.articleType === "detailed")
               .map((article, index) => {
                 const isExpanded = expandedIndex === index;
+                const title      = extractTitle(article.content_ar);
                 return (
                   <div key={article.articleId} className="px-5 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-800">
-                          مقال {index + 1}
+                          {title ?? `مقال ${index + 1}`}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {article.wordCount} كلمة
@@ -132,8 +145,8 @@ export default function ArticleContentViewer({
                       </button>
                     </div>
                     {isExpanded && (
-                      <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {article.content_ar}
+                      <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none rtl">
+                        <ReactMarkdown>{article.content_ar}</ReactMarkdown>
                       </div>
                     )}
                   </div>
