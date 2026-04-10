@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using MuafaPlus.Data;
 using MuafaPlus.Models;
 using MuafaPlus.Services;
 
@@ -16,13 +18,16 @@ namespace MuafaPlus.Controllers;
 public class TenantsController : ControllerBase
 {
     private readonly TenantService              _tenants;
+    private readonly MuafaDbContext             _db;
     private readonly ILogger<TenantsController> _logger;
 
     public TenantsController(
         TenantService              tenants,
+        MuafaDbContext             db,
         ILogger<TenantsController> logger)
     {
         _tenants = tenants;
+        _db      = db;
         _logger  = logger;
     }
 
@@ -252,5 +257,122 @@ public class TenantsController : ControllerBase
                 ["tenantId"]    = id
             }
         });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/v1/tenants/{id}/users
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Returns all users belonging to the specified tenant.</summary>
+    [HttpGet("{id:guid}/users")]
+    [ProducesResponseType(typeof(ApiResponse<List<UserSummaryResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>),                    StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<List<UserSummaryResponse>>>> GetUsers(Guid id)
+    {
+        var tenant = await _tenants.GetTenantAsync(id);
+        if (tenant == null)
+            return NotFound(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = $"Tenant {id} not found.",
+                ErrorType = "NotFound"
+            });
+
+        var users = await _db.Users
+            .Where(u => u.TenantId == id)
+            .OrderBy(u => u.CreatedAt)
+            .Select(u => new UserSummaryResponse
+            {
+                UserId    = u.UserId,
+                Email     = u.Email,
+                FullName  = u.FullName,
+                Role      = u.Role,
+                TenantId  = u.TenantId,
+                IsActive  = u.IsActive,
+                CreatedAt = u.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new ApiResponse<List<UserSummaryResponse>> { Success = true, Data = users });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // POST /api/v1/tenants/{id}/users
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Creates a new user within the specified tenant.
+    /// Returns 409 Conflict if a user with the same email already exists.
+    /// </summary>
+    [HttpPost("{id:guid}/users")]
+    [ProducesResponseType(typeof(ApiResponse<UserSummaryResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>),              StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>),              StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>),              StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<UserSummaryResponse>>> CreateUser(
+        Guid id,
+        [FromBody] CreateTenantUserRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Error   = "Validation failed.",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["errors"] = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList()
+                }
+            });
+
+        var tenant = await _tenants.GetTenantAsync(id);
+        if (tenant == null)
+            return NotFound(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = $"Tenant {id} not found.",
+                ErrorType = "NotFound"
+            });
+
+        var exists = await _db.Users.AnyAsync(u => u.Email == request.Email);
+        if (exists)
+            return Conflict(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = $"A user with email {request.Email} already exists.",
+                ErrorType = "Conflict"
+            });
+
+        var user = new AppUser
+        {
+            UserId               = Guid.NewGuid(),
+            TenantId             = id,
+            Email                = request.Email,
+            FullName             = request.FullName,
+            PasswordHash         = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
+            Role                 = request.Role,
+            IsActive             = true,
+            MustResetOnNextLogin = true,
+            CreatedAt            = DateTime.UtcNow
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        var response = new UserSummaryResponse
+        {
+            UserId    = user.UserId,
+            Email     = user.Email,
+            FullName  = user.FullName,
+            Role      = user.Role,
+            TenantId  = user.TenantId,
+            IsActive  = user.IsActive,
+            CreatedAt = user.CreatedAt
+        };
+
+        return CreatedAtAction(nameof(GetById), new { id = user.UserId },
+            new ApiResponse<UserSummaryResponse> { Success = true, Data = response });
     }
 }

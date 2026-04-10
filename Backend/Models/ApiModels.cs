@@ -541,3 +541,24 @@ public class UpdateChatSettingsRequest
 {
     public bool ChatEnabled { get; set; }
 }
+
+public class UserSummaryResponse
+{
+    public Guid     UserId    { get; set; }
+    public string   Email     { get; set; } = string.Empty;
+    public string   FullName  { get; set; } = string.Empty;
+    public string   Role      { get; set; } = string.Empty;
+    public Guid?    TenantId  { get; set; }
+    public bool     IsActive  { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateTenantUserRequest
+{
+    [Required] public string  Email       { get; set; } = string.Empty;
+    [Required] public string  FullName    { get; set; } = string.Empty;
+    [Required] public string  Password    { get; set; } = string.Empty;
+    [Required] public string  Role        { get; set; } = string.Empty;
+    public            string? Specialty   { get; set; }
+    public            string? Institution { get; set; }
+}

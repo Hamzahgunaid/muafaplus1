@@ -5,24 +5,15 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
 import { testScenarioApi, formatRelativeTime } from "@/services/api";
 import NavBar from "@/components/NavBar";
+import ArticleContentViewer from "@/components/ArticleContentViewer";
 import type {
   TestScenarioResponse,
   SubmitEvaluationRequest,
   ContentEvaluationResponse,
-  WorkflowResult,
+  Stage1Output,
 } from "@/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const RISK_CLASS: Record<string, string> = {
-  LOW:      "bg-green-50  text-green-700  border border-green-200",
-  MODERATE: "bg-blue-50   text-blue-700   border border-blue-200",
-  HIGH:     "bg-orange-50 text-orange-700 border border-orange-200",
-  CRITICAL: "bg-red-50    text-red-700    border border-red-200",
-};
-const RISK_LABEL: Record<string, string> = {
-  LOW: "منخفض", MODERATE: "متوسط", HIGH: "مرتفع", CRITICAL: "حرج",
-};
 
 const PATIENT_LABELS: Record<string, string> = {
   primaryDiagnosis:    "التشخيص الرئيسي",
@@ -143,59 +134,20 @@ function PatientCard({ scenario }: { scenario: TestScenarioResponse }) {
 // ── Section 2: Generated Content ──────────────────────────────────────────────
 
 function GeneratedContentCard({ scenario }: { scenario: TestScenarioResponse }) {
-  const [expanded, setExpanded] = useState(false);
-  const generated = parseJson<WorkflowResult>(scenario.generatedContentJson);
+  const generated = parseJson<Stage1Output>(scenario.generatedContentJson);
   if (!generated) return null;
-
-  const riskLevel = generated.riskAssessment?.riskLevel ?? null;
-  const summary   = generated.summaryArticle ?? null;
-  const articles  = generated.detailedArticles ?? [];
 
   return (
     <Card title="المحتوى المولّد">
-      <div className="space-y-4">
-        {/* Risk */}
-        {riskLevel && RISK_CLASS[riskLevel] && (
-          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${RISK_CLASS[riskLevel]}`}>
-            مستوى الخطر: {RISK_LABEL[riskLevel] ?? riskLevel}
-          </span>
-        )}
-
-        {/* Summary */}
-        {summary && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">الملخص الصحي</p>
-            <div
-              className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-4 overflow-y-auto"
-              style={{ maxHeight: expanded ? "none" : "400px" }}
-            >
-              {summary}
-            </div>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="mt-1.5 text-brand-600 text-xs hover:underline"
-            >
-              {expanded ? "عرض أقل" : "عرض كامل"}
-            </button>
-          </div>
-        )}
-
-        {/* Article outlines */}
-        {articles.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">
-              مخطط المقالات ({articles.length})
-            </p>
-            <ol className="space-y-1.5 list-decimal list-inside">
-              {articles.map((a, i) => (
-                <li key={i} className="text-sm text-gray-700">
-                  {a.titleAr || a.titleEn || `مقالة ${i + 1}`}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-      </div>
+      <ArticleContentViewer
+        riskLevel={generated?.risk_assessment?.RiskLevel ?? null}
+        summaryArticle={generated?.summary_article ?? null}
+        articleOutlines={generated?.article_outlines ?? []}
+        mode="test-scenario"
+        onGenerate={async (_index) => {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }}
+      />
     </Card>
   );
 }

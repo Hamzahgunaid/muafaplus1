@@ -77,8 +77,8 @@ export default function AdminPage() {
   if (!isLoggedIn) return null;
   if (role && role !== "SuperAdmin" && role !== "HospitalAdmin") return null;
 
-  const isSuperAdmin    = role === "SuperAdmin";
-  const isHospitalAdmin = role === "HospitalAdmin";
+  const isSuperAdmin   = role === "SuperAdmin";
+  const showManagement = (role === "SuperAdmin" || role === "HospitalAdmin") && !!tenantId;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -88,12 +88,12 @@ export default function AdminPage() {
         <div className="space-y-6">
           <TenantsCard isSuperAdmin={isSuperAdmin} />
           <InvitationCodeCard />
-          {isHospitalAdmin && tenantId && (
+          {showManagement && (
             <>
-              <SubscriptionCard    tenantId={tenantId} />
-              <TenantSettingsCard  tenantId={tenantId} />
-              <UsersCard           tenantId={tenantId} />
-              <AssistantLinksCard  tenantId={tenantId} />
+              <SubscriptionCard    tenantId={tenantId!} />
+              <TenantSettingsCard  tenantId={tenantId!} />
+              <UsersCard           tenantId={tenantId!} />
+              <AssistantLinksCard  tenantId={tenantId!} />
             </>
           )}
         </div>
