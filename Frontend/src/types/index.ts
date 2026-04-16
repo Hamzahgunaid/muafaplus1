@@ -183,6 +183,7 @@ export interface ReferralResponse {
   updatedAt:            string;
   scheduledDeliveryAt?: string | null;
   deliveredAt?:         string | null;
+  chatEnabled?:         boolean;
 }
 
 export interface ReferralArticleResponse {

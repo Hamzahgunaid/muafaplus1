@@ -126,7 +126,7 @@ export default function ReferralDetailPage() {
                 />
               </Card>
             )}
-            {referral.sessionId && (
+            {referral.chatEnabled && (
               <ChatCard referralId={referralId} />
             )}
           </div>
@@ -264,9 +264,10 @@ type ChatState =
   | { type: "error"; message: string };
 
 function ChatCard({ referralId }: { referralId: string }) {
-  const [chatState, setChatState] = useState<ChatState>({ type: "idle" });
-  const [message,   setMessage]   = useState("");
-  const [sending,   setSending]   = useState(false);
+  const [chatState,    setChatState]    = useState<ChatState>({ type: "idle" });
+  const [message,      setMessage]      = useState("");
+  const [sending,      setSending]      = useState(false);
+  const [chatDisabled, setChatDisabled] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadThread = useCallback(async () => {
@@ -275,6 +276,9 @@ function ChatCard({ referralId }: { referralId: string }) {
       const res = await chatApi.getChatThread(referralId);
       if (res.success && res.data) {
         setChatState({ type: "loaded", thread: res.data });
+      } else if (res.errorType === "Forbidden" || res.error?.toLowerCase().includes("403") || res.error?.toLowerCase().includes("forbidden")) {
+        setChatDisabled(true);
+        setChatState({ type: "idle" });
       } else {
         setChatState({ type: "error", message: res.error ?? "تعذر تحميل المحادثة" });
       }
@@ -282,6 +286,8 @@ function ChatCard({ referralId }: { referralId: string }) {
       setChatState({ type: "error", message: "خطأ في الاتصال" });
     }
   }, [referralId]);
+
+  if (chatDisabled) return null;
 
   const refreshThread = useCallback(async () => {
     try {

@@ -323,13 +323,15 @@ public class ReferralService
         var referral = await _db.Referrals
             .Include(r => r.PatientAccess)
             .Include(r => r.Engagement)
+            .Include(r => r.ChatThread)
             .FirstOrDefaultAsync(r => r.ReferralId == referralId
                                    && r.PhysicianId == physicianId);
 
         return referral == null
             ? null
             : MapToResponse(referral, referral.PatientAccess?.PhoneNumber ?? string.Empty,
-                            referral.Engagement);
+                            referral.Engagement,
+                            referral.ChatThread?.IsEnabled ?? false);
     }
 
     public async Task<(bool success, string? error)> SubmitFeedbackAsync(
@@ -622,7 +624,8 @@ public class ReferralService
     private static ReferralResponse MapToResponse(
         Referral            referral,
         string              phone,
-        ReferralEngagement? engagement)
+        ReferralEngagement? engagement,
+        bool                chatEnabled = false)
     {
         return new ReferralResponse
         {
@@ -635,6 +638,7 @@ public class ReferralService
             DeliveredAt         = referral.DeliveredAt,
             CreatedAt           = referral.CreatedAt,
             SessionId           = referral.SessionId,
+            ChatEnabled         = chatEnabled,
             Engagement          = engagement == null ? null : new ReferralEngagementResponse
             {
                 MessageSentAt       = engagement.MessageSentAt,
