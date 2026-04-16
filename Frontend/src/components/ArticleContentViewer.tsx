@@ -31,7 +31,7 @@ interface ArticleContentViewerProps {
   articleOutlines?:   ArticleOutline[];
   referralArticles?:  ReferralArticleResponse[];
   mode:               "referral" | "test-scenario";
-  onGenerate?:        (index: number) => Promise<void>;
+  onGenerate?:        (index: number) => Promise<string | void>;
 }
 
 export default function ArticleContentViewer({
@@ -42,15 +42,23 @@ export default function ArticleContentViewer({
   mode,
   onGenerate,
 }: ArticleContentViewerProps) {
-  const [expanded,      setExpanded]      = useState(false);
-  const [generating,    setGenerating]    = useState<number | null>(null);
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [expanded,          setExpanded]          = useState(false);
+  const [generating,        setGenerating]        = useState<number | null>(null);
+  const [expandedIndex,     setExpandedIndex]     = useState<number | null>(null);
+  const [generatedSet,      setGeneratedSet]      = useState<Set<number>>(new Set());
+  const [generatedContent,  setGeneratedContent]  = useState<Record<number, string>>({});
 
   const handleGenerate = async (index: number) => {
     if (!onGenerate) return;
     setGenerating(index);
     try {
-      await onGenerate(index);
+      const content = await onGenerate(index);
+      setGeneratedSet(prev => { const s = new Set(prev); s.add(index); return s; });
+      if (typeof content === "string") {
+        setGeneratedContent(prev => ({ ...prev, [index]: content }));
+      }
+    } catch {
+      // Generation failed — button resets to توليد
     } finally {
       setGenerating(null);
     }
@@ -90,23 +98,52 @@ export default function ArticleContentViewer({
           <p className="text-xs font-medium text-gray-500 mb-2">
             مخطط المقالات ({articleOutlines!.length})
           </p>
-          <ol className="space-y-2">
-            {articleOutlines!.map((outline, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-gray-700">
-                  {i + 1}. {outline.TitleAr || outline.TitleEn || `مقالة ${i + 1}`}
-                </span>
-                {onGenerate && (
-                  <button
-                    onClick={() => handleGenerate(i)}
-                    disabled={generating !== null}
-                    className="shrink-0 px-3 py-1 rounded-lg text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 transition disabled:opacity-50"
-                  >
-                    {generating === i ? "جارٍ التوليد..." : "توليد"}
-                  </button>
-                )}
-              </li>
-            ))}
+          <ol className="space-y-0 border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
+            {articleOutlines!.map((outline, i) => {
+              const isGenerating = generating === i;
+              const isGenerated  = generatedSet.has(i);
+              const content      = generatedContent[i];
+              const isExpanded   = expandedIndex === i;
+
+              return (
+                <li key={i} className="flex flex-col gap-2 text-sm px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-700">
+                      {i + 1}. {outline.TitleAr || outline.TitleEn || `مقالة ${i + 1}`}
+                    </span>
+
+                    {onGenerate && (
+                      isGenerating ? (
+                        <span className="shrink-0 px-3 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-600 animate-pulse">
+                          جارٍ التوليد...
+                        </span>
+                      ) : isGenerated ? (
+                        <button
+                          onClick={() => setExpandedIndex(isExpanded ? null : i)}
+                          className="shrink-0 px-3 py-1 rounded-lg text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 transition"
+                        >
+                          {isExpanded ? "إخفاء ▲" : "عرض →"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleGenerate(i)}
+                          disabled={generating !== null}
+                          className="shrink-0 px-3 py-1 rounded-lg text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 transition disabled:opacity-50"
+                        >
+                          توليد ▶
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  {isGenerated && isExpanded && content && (
+                    <div className="pt-2 border-t border-gray-100 text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none rtl">
+                      <ReactMarkdown>{content}</ReactMarkdown>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </div>
       )}
