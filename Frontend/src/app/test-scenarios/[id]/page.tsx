@@ -146,6 +146,7 @@ function GeneratedContentCard({ scenario }: { scenario: TestScenarioResponse }) 
         mode="test-scenario"
         onGenerate={async (_index) => {
           await new Promise(resolve => setTimeout(resolve, 2000));
+          return "سيتم إضافة التوليد الحقيقي قريباً";
         }}
       />
     </Card>
