@@ -28,6 +28,8 @@ public class TestScenariosController : ControllerBase
 {
     private readonly MuafaDbContext              _db;
     private readonly WorkflowService             _workflow;
+    private readonly MuafaApiClient              _apiClient;
+    private readonly RiskCalculatorService       _riskCalculator;
     private readonly ILogger<TestScenariosController> _logger;
 
     private static readonly JsonSerializerOptions _jsonOpts =
@@ -36,11 +38,15 @@ public class TestScenariosController : ControllerBase
     public TestScenariosController(
         MuafaDbContext                   db,
         WorkflowService                  workflow,
+        MuafaApiClient                   apiClient,
+        RiskCalculatorService            riskCalculator,
         ILogger<TestScenariosController> logger)
     {
-        _db       = db;
-        _workflow = workflow;
-        _logger   = logger;
+        _db             = db;
+        _workflow       = workflow;
+        _apiClient      = apiClient;
+        _riskCalculator = riskCalculator;
+        _logger         = logger;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -349,6 +355,110 @@ public class TestScenariosController : ControllerBase
         {
             await Response.WriteAsync("data: [DONE]\n\n");
             await Response.Body.FlushAsync();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // POST /api/v1/test-scenarios/{id}/generate-article?index={n}
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Generates a single Stage 2 detailed article for a test scenario.
+    /// Re-runs RiskCalculatorService (Rule 1) before calling Claude API.
+    /// Returns { content: string } with the generated Arabic article body.
+    /// </summary>
+    [HttpPost("{id:guid}/generate-article")]
+    [ProducesResponseType(typeof(ApiResponse<GenerateArticleResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>),                  StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>),                  StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<GenerateArticleResponse>>> GenerateArticle(
+        Guid id,
+        [FromQuery] int index)
+    {
+        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+            return Unauthorized(new ApiResponse<object>
+            {
+                Success = false, Error = "لم يتم التحقق من هوية الطبيب.", ErrorType = "MissingPhysicianClaim"
+            });
+
+        var scenario = await _db.TestScenarios
+            .FirstOrDefaultAsync(s => s.ScenarioId == id && s.PhysicianId == physicianId);
+
+        if (scenario == null)
+            return NotFound(new ApiResponse<object>
+            {
+                Success = false, Error = $"TestScenario {id} not found.", ErrorType = "NotFound"
+            });
+
+        if (string.IsNullOrEmpty(scenario.GeneratedContentJson))
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false, Error = "Scenario has no generated content.", ErrorType = "NoContent"
+            });
+
+        Stage1Output? stage1;
+        PatientData?  patientData;
+        try
+        {
+            stage1      = JsonSerializer.Deserialize<Stage1Output>(scenario.GeneratedContentJson, _jsonOpts);
+            patientData = JsonSerializer.Deserialize<PatientData>(scenario.PatientDataJson, _jsonOpts);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialise scenario {Id}", id);
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false, Error = "Scenario content is malformed.", ErrorType = "DeserializationError"
+            });
+        }
+
+        if (stage1 == null || patientData == null)
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false, Error = "Scenario content is malformed.", ErrorType = "DeserializationError"
+            });
+
+        if (index < 0 || index >= stage1.ArticleOutlines.Count)
+            return BadRequest(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = $"Index {index} is out of range (0–{stage1.ArticleOutlines.Count - 1}).",
+                ErrorType = "IndexOutOfRange"
+            });
+
+        var articleSpec = stage1.ArticleOutlines[index];
+        var riskScore   = _riskCalculator.Calculate(patientData);   // Rule 1 — always C#
+
+        try
+        {
+            var result = await _apiClient.GenerateStage2Async(patientData, articleSpec, riskScore);
+
+            if (!result.Success || result.Output == null)
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
+                {
+                    Success = false, Error = result.ErrorMessage ?? "Stage 2 generation failed.",
+                    ErrorType = "GenerationFailed"
+                });
+
+            _logger.LogInformation(
+                "GenerateArticle complete — scenario:{ScenarioId} index:{Index} article:{ArticleId}",
+                id, index, articleSpec.ArticleId);
+
+            return Ok(new ApiResponse<GenerateArticleResponse>
+            {
+                Success = true,
+                Data    = new GenerateArticleResponse { Content = result.Output.Article.ContentAr }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "GenerateArticle error — scenario:{ScenarioId} index:{Index}", id, index);
+            return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
+            {
+                Success = false, Error = "Internal server error.", ErrorType = ex.GetType().Name
+            });
         }
     }
 

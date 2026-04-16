@@ -563,3 +563,8 @@ public class CreateTenantUserRequest
     public            string? Specialty   { get; set; }
     public            string? Institution { get; set; }
 }
+
+public class GenerateArticleResponse
+{
+    public string Content { get; set; } = string.Empty;
+}

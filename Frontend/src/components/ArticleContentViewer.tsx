@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import type { ArticleOutline, ReferralArticleResponse } from "@/types";
 
@@ -42,11 +42,14 @@ export default function ArticleContentViewer({
   mode,
   onGenerate,
 }: ArticleContentViewerProps) {
+  const [mounted,           setMounted]           = useState(false);
   const [expanded,          setExpanded]          = useState(false);
   const [generating,        setGenerating]        = useState<number | null>(null);
   const [expandedIndex,     setExpandedIndex]     = useState<number | null>(null);
   const [generatedSet,      setGeneratedSet]      = useState<Set<number>>(new Set());
   const [generatedContent,  setGeneratedContent]  = useState<Record<number, string>>({});
+
+  useEffect(() => setMounted(true), []);
 
   const handleGenerate = async (index: number) => {
     if (!onGenerate) return;
@@ -81,7 +84,7 @@ export default function ArticleContentViewer({
             className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-4 overflow-y-auto prose prose-sm max-w-none rtl"
             style={{ maxHeight: expanded ? "none" : "400px" }}
           >
-            <ReactMarkdown>{summaryArticle}</ReactMarkdown>
+            {mounted && <ReactMarkdown>{summaryArticle}</ReactMarkdown>}
           </div>
           <button
             onClick={() => setExpanded(!expanded)}
@@ -136,7 +139,7 @@ export default function ArticleContentViewer({
                     )}
                   </div>
 
-                  {isGenerated && isExpanded && content && (
+                  {isGenerated && isExpanded && content && mounted && (
                     <div className="pt-2 border-t border-gray-100 text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none rtl">
                       <ReactMarkdown>{content}</ReactMarkdown>
                     </div>
@@ -181,7 +184,7 @@ export default function ArticleContentViewer({
                         {isExpanded ? "إخفاء ▲" : "عرض →"}
                       </button>
                     </div>
-                    {isExpanded && (
+                    {isExpanded && mounted && (
                       <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none rtl">
                         <ReactMarkdown>{article.content_ar}</ReactMarkdown>
                       </div>

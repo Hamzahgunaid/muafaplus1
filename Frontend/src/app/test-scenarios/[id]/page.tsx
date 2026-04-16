@@ -144,9 +144,8 @@ function GeneratedContentCard({ scenario }: { scenario: TestScenarioResponse }) 
         summaryArticle={generated?.summary_article ?? null}
         articleOutlines={generated?.article_outlines ?? []}
         mode="test-scenario"
-        onGenerate={async (_index) => {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return "سيتم إضافة التوليد الحقيقي قريباً";
+        onGenerate={async (index) => {
+          return await testScenarioApi.generateScenarioArticle(scenario.scenarioId, index);
         }}
       />
     </Card>
