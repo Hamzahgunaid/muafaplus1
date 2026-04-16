@@ -54,8 +54,17 @@ public class Physician
     public bool EmailNotifications  { get; set; } = true;
     public bool SmsNotifications    { get; set; } = false;
 
+    /// <summary>Phase 3 Task 2: per-physician chat toggle. Both this and TenantSettings.ChatEnabled must be true.</summary>
+    public bool ChatEnabled         { get; set; } = false;
+
     public DateTime  CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime  UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Phase 1: nullable FK to Tenant. Null for seed/legacy physicians
+    /// created before multi-tenancy was introduced.
+    /// </summary>
+    public Guid? TenantId { get; set; }
 
     // Navigation properties
     public ICollection<Patient>           Patients           { get; set; } = [];

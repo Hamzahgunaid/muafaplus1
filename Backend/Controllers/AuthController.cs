@@ -1,5 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MuafaPlus.Data;
 using MuafaPlus.Models;
 using MuafaPlus.Services;
@@ -20,22 +24,26 @@ public class AuthController : ControllerBase
     private readonly JwtService     _jwt;
     private readonly ILogger<AuthController> _logger;
     private readonly IConfiguration _config;
+    private readonly InvitationCodeService _invitationCodes;
 
     public AuthController(
         MuafaDbContext db,
         JwtService jwt,
         IConfiguration config,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        InvitationCodeService invitationCodes)
     {
-        _db     = db;
-        _jwt    = jwt;
-        _config = config;
-        _logger = logger;
+        _db              = db;
+        _jwt             = jwt;
+        _config          = config;
+        _logger          = logger;
+        _invitationCodes = invitationCodes;
     }
 
     /// <summary>
-    /// Authenticates a physician and returns a signed JWT.
-    /// The token carries the PhysicianId claim used by all downstream endpoints.
+    /// Phase 3.6 Task 2: Authenticates any provider user via the unified AppUser table.
+    /// Looks up the Physician record by email to populate legacy PhysicianId /
+    /// Specialty / Institution claims so all existing controllers remain compatible.
     /// </summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
@@ -58,11 +66,11 @@ public class AuthController : ControllerBase
                 }
             });
 
-        // Look up physician by email
-        var physician = await _db.Physicians
-            .FirstOrDefaultAsync(p => p.Email == request.Email && p.IsActive);
+        // Phase 3.6: look up unified AppUser by email
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
-        if (physician == null)
+        if (user == null)
         {
             _logger.LogWarning("Login attempt for unknown email: {Email}", request.Email);
             return Unauthorized(new ApiResponse<object>
@@ -72,13 +80,9 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Look up stored credential hash
-        var credential = await _db.PhysicianCredentials
-            .FindAsync(physician.PhysicianId);
-
-        if (credential == null || !BCrypt.Net.BCrypt.Verify(request.Password, credential.PasswordHash))
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
-            _logger.LogWarning("Failed login — physician:{Id}", physician.PhysicianId);
+            _logger.LogWarning("Failed login — user:{Email}", user.Email);
             return Unauthorized(new ApiResponse<object>
             {
                 Success = false,
@@ -86,14 +90,23 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Update last login timestamp
-        credential.LastLoginAt = DateTime.UtcNow;
+        // Update last login timestamp on AppUser
+        user.LastLoginAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var expiryHours = int.TryParse(_config["Jwt:ExpiryHours"], out var h) ? h : 12;
-        var token       = _jwt.GenerateToken(physician);
+        // Look up Physician record by email for backward-compat claims
+        var physician = await _db.Physicians
+            .FirstOrDefaultAsync(p => p.Email == request.Email && p.IsActive);
 
-        _logger.LogInformation("Successful login — physician:{Id}", physician.PhysicianId);
+        var expiryHours = int.TryParse(_config["Jwt:ExpiryHours"], out var h) ? h : 12;
+        var token       = _jwt.GenerateToken(
+            user:        user,
+            physicianId: physician?.PhysicianId,
+            specialty:   physician?.Specialty,
+            institution: physician?.Institution);
+
+        _logger.LogInformation(
+            "Successful login — user:{Email} role:{Role}", user.Email, user.Role);
 
         return Ok(new ApiResponse<LoginResponse>
         {
@@ -101,18 +114,22 @@ public class AuthController : ControllerBase
             Data    = new LoginResponse
             {
                 Token                = token,
-                PhysicianId          = physician.PhysicianId,
-                FullName             = physician.FullName,
-                Specialty            = physician.Specialty,
-                Institution          = physician.Institution,
+                UserId               = user.UserId.ToString(),
+                PhysicianId          = physician?.PhysicianId ?? string.Empty,
+                FullName             = user.FullName,
+                Specialty            = physician?.Specialty   ?? string.Empty,
+                Institution          = physician?.Institution,
+                Role                 = user.Role,
+                TenantId             = user.TenantId,
                 ExpiresAt            = DateTime.UtcNow.AddHours(expiryHours),
-                MustResetOnNextLogin = credential.MustResetOnNextLogin
+                MustResetOnNextLogin = user.MustResetOnNextLogin
             }
         });
     }
 
     /// <summary>
-    /// Changes the authenticated physician's password.
+    /// Changes the authenticated user's password.
+    /// Phase 3.6: operates on AppUser.PasswordHash (login source of truth).
     /// Clears MustResetOnNextLogin on success.
     /// </summary>
     [HttpPost("change-password")]
@@ -137,17 +154,29 @@ public class AuthController : ControllerBase
                 }
             });
 
-        var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
-        if (string.IsNullOrEmpty(physicianId))
-            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+        // Phase 3.6: look up AppUser using the UserId claim (Guid),
+        // falling back to email claim if NameIdentifier carries PhysicianId string.
+        AppUser? user = null;
 
-        var credential = await _db.PhysicianCredentials.FindAsync(physicianId);
-        if (credential == null)
-            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+        var rawId = User.FindFirst(ClaimNames.UserId)?.Value
+                 ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, credential.PasswordHash))
+        if (!string.IsNullOrEmpty(rawId) && Guid.TryParse(rawId, out var userGuid))
+            user = await _db.Users.FindAsync(userGuid);
+
+        if (user == null)
         {
-            _logger.LogWarning("Change-password: wrong current password — physician:{Id}", physicianId);
+            var email = User.FindFirst(ClaimNames.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+                user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+        }
+
+        if (user == null)
+            return Unauthorized(new ApiResponse<object> { Success = false, Error = "Unauthorized." });
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+        {
+            _logger.LogWarning("Change-password: wrong current password — user:{Email}", user.Email);
             return BadRequest(new ApiResponse<object>
             {
                 Success = false,
@@ -155,17 +184,166 @@ public class AuthController : ControllerBase
             });
         }
 
-        credential.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
-        credential.MustResetOnNextLogin = false;
+        user.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
+        user.MustResetOnNextLogin = false;
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Password changed — physician:{Id}", physicianId);
+        _logger.LogInformation("Password changed — user:{Email}", user.Email);
 
         return Ok(new ApiResponse<object>
         {
-            Success = true,
-            Metadata = new Dictionary<string, object> { ["physician_id"] = physicianId }
+            Success  = true,
+            Metadata = new Dictionary<string, object> { ["user_id"] = user.UserId.ToString() }
         });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Phase 1 — Invitation code endpoints
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Validates an invitation code. Always returns HTTP 200 — never 4xx —
+    /// so the frontend can display IsValid=false messages gracefully.
+    /// </summary>
+    [HttpPost("validate-code")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [ProducesResponseType(typeof(ValidateInvitationCodeResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ValidateInvitationCodeResponse>> ValidateCode(
+        [FromBody] ValidateInvitationCodeRequest request)
+    {
+        if (!ModelState.IsValid)
+            return Ok(new ValidateInvitationCodeResponse
+            {
+                IsValid = false,
+                Message = "Invalid request."
+            });
+
+        var result = await _invitationCodes.ValidateCodeAsync(request.Code);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Phase 2 Task 3: Patient login via phone number + 4-digit access code.
+    /// Issues a 30-day JWT with PatientAccessId, PhoneNumber, TenantId, Role=Patient claims.
+    /// Returns 401 with Arabic message if credentials are incorrect.
+    /// </summary>
+    [HttpPost("patient/login")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<PatientLoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>),               StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<PatientLoginResponse>>> PatientLogin(
+        [FromBody] PatientLoginRequest request)
+    {
+        // Step 1: Validate credentials against PatientAccess table
+        var access = await _db.PatientAccesses
+            .FirstOrDefaultAsync(a => a.PhoneNumber == request.PhoneNumber
+                                   && a.AccessCode  == request.Code
+                                   && a.IsActive);
+
+        if (access == null)
+        {
+            _logger.LogWarning("Patient login failed — phone:{Phone}", request.PhoneNumber);
+            return Unauthorized(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = "رقم الهاتف أو الرمز غير صحيح",
+                ErrorType = "InvalidCredentials"
+            });
+        }
+
+        // Step 2: Update last login timestamp
+        access.LastLoginAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        // Step 3: Generate patient JWT (30-day expiry — patients need longer sessions)
+        var jwtSecret = _config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret not configured");
+
+        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim("PatientAccessId", access.AccessId.ToString()),
+            new Claim("PhoneNumber",     access.PhoneNumber),
+            new Claim("TenantId",        access.TenantId.ToString()),
+            new Claim("Role",            "Patient"),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        var tokenDescriptor = new JwtSecurityToken(
+            issuer:             _config["Jwt:Issuer"]   ?? "muafaplus-api",
+            audience:           _config["Jwt:Audience"] ?? "muafaplus-ui",
+            claims:             claims,
+            notBefore:          DateTime.UtcNow,
+            expires:            DateTime.UtcNow.AddDays(30),
+            signingCredentials: creds
+        );
+
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+
+        // Step 4: Count referrals for this patient
+        var referralCount = await _db.Referrals
+            .CountAsync(r => r.PatientAccessId == access.AccessId);
+
+        _logger.LogInformation(
+            "Patient login success — accessId:{Id} phone:{Phone} referrals:{Count}",
+            access.AccessId, access.PhoneNumber, referralCount);
+
+        // Step 5: Return response
+        return Ok(new ApiResponse<PatientLoginResponse>
+        {
+            Success = true,
+            Data    = new PatientLoginResponse
+            {
+                Token         = tokenString,
+                PhoneNumber   = access.PhoneNumber,
+                ReferralCount = referralCount
+            }
+        });
+    }
+
+    /// <summary>
+    /// Generates a new invitation code for the given role.
+    /// Requires SuperAdmin or HospitalAdmin role.
+    /// </summary>
+    [HttpPost("invitation-codes/generate")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,HospitalAdmin")]
+    [ProducesResponseType(typeof(ApiResponse<GenerateInvitationCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<GenerateInvitationCodeResponse>>> GenerateInvitationCode(
+        [FromBody] GenerateInvitationCodeRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false, Error = "Validation failed.",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["errors"] = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList()
+                }
+            });
+
+        var userId = User.FindFirst(ClaimNames.PhysicianId)?.Value ?? string.Empty;
+
+        try
+        {
+            var result = await _invitationCodes.GenerateCodeAsync(request, userId);
+            _logger.LogInformation(
+                "Invitation code generated — {Code} by physician:{UserId}", result.Code, userId);
+            return Ok(new ApiResponse<GenerateInvitationCodeResponse> { Success = true, Data = result });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate invitation code");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false, Error = "Failed to generate invitation code.", ErrorType = ex.GetType().Name
+            });
+        }
     }
 
     /// <summary>

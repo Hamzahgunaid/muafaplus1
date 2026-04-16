@@ -38,6 +38,7 @@ public class JwtService
             new Claim(ClaimTypes.Email,           physician.Email ?? string.Empty),
             new Claim("specialty",                physician.Specialty),
             new Claim("institution",              physician.Institution ?? string.Empty),
+            new Claim("TenantId",                 physician.TenantId?.ToString() ?? ""),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
@@ -52,6 +53,55 @@ public class JwtService
 
         _logger.LogInformation("JWT issued — physician:{Id} expiry:{Expiry}h",
             physician.PhysicianId, Expiry);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>
+    /// Phase 3.6 Task 2: issues a JWT for an AppUser.
+    /// Sets ClaimTypes.NameIdentifier to <paramref name="physicianId"/> when provided
+    /// so all existing controllers that read ClaimNames.PhysicianId continue to work.
+    /// The "Role" claim enables [Authorize(Roles = "...")] enforcement.
+    /// </summary>
+    public string GenerateToken(
+        AppUser user,
+        string? physicianId  = null,
+        string? specialty    = null,
+        string? institution  = null)
+    {
+        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            // Keep NameIdentifier = PhysicianId for backward compat with all controllers.
+            // Falls back to UserId string for non-physician accounts (e.g. SuperAdmin).
+            new Claim(ClaimTypes.NameIdentifier, physicianId ?? user.UserId.ToString()),
+            new Claim(ClaimTypes.Name,           user.FullName),
+            new Claim(ClaimTypes.Email,          user.Email),
+            new Claim(ClaimNames.UserId,         user.UserId.ToString()),
+            new Claim(ClaimNames.Role,           user.Role),
+            new Claim(ClaimNames.TenantId,       user.TenantId?.ToString() ?? ""),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        if (!string.IsNullOrEmpty(specialty))
+            claims.Add(new Claim("specialty",    specialty));
+        if (!string.IsNullOrEmpty(institution))
+            claims.Add(new Claim("institution",  institution));
+
+        var token = new JwtSecurityToken(
+            issuer:             Issuer,
+            audience:           Audience,
+            claims:             claims,
+            notBefore:          DateTime.UtcNow,
+            expires:            DateTime.UtcNow.AddHours(Expiry),
+            signingCredentials: creds
+        );
+
+        _logger.LogInformation(
+            "JWT issued — user:{Email} role:{Role} expiry:{Expiry}h",
+            user.Email, user.Role, Expiry);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }

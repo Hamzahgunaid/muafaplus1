@@ -7,6 +7,9 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token:       string;
+  userId:      string;
+  role:        string;
+  tenantId:    string | null;
   physicianId: string;
   fullName:    string;
   specialty:   string;
@@ -149,4 +152,256 @@ export interface SessionStatus {
   totalCost:     number | null;
   completedAt:   string | null;
   errorMessage:  string | null;
+}
+
+// ── Referrals ─────────────────────────────────────────────────────────────────
+
+export interface CreateReferralRequest {
+  patientPhone:             string;
+  patientNameOverride?:     string;
+  primaryDiagnosis:         string;
+  ageGroup:                 AgeGroup;
+  comorbidities?:           string;
+  currentMedications?:      string;
+  allergies?:               string;
+  medicalRestrictions?:     string;
+  notes?:                   string;
+  notificationDelayHours?:  number;
+  whatsAppDelivery?:        boolean;
+}
+
+export interface ReferralResponse {
+  referralId:           string;
+  referralCode:         string;
+  patientPhone:         string;
+  patientName:          string | null;
+  status:               string;
+  riskLevel:            string | null;
+  sessionId:            string | null;
+  notes:                string | null;
+  createdAt:            string;
+  updatedAt:            string;
+  scheduledDeliveryAt?: string | null;
+  deliveredAt?:         string | null;
+}
+
+export interface ReferralArticleResponse {
+  articleId:     string;
+  articleType:   string;
+  content_ar:    string;
+  coverageCodes: string | null;
+  wordCount:     number;
+  createdAt:     string;
+}
+
+// ── Referral Engagement ───────────────────────────────────────────────────────
+
+export interface ReferralEngagementResponse {
+  referralId:           string;
+  messageSentAt:        string | null;
+  appOpenedAt:          string | null;
+  summaryViewedAt:      string | null;
+  stage2RequestedAt:    string | null;
+  feedbackSubmittedAt:  string | null;
+}
+
+// ── Stage1Output — matches Backend/Models/ArticleModels.cs Stage1Output ──────
+// JSON keys match [JsonPropertyName] attributes exactly.
+// Fields without [JsonPropertyName] serialize as PascalCase (C# default).
+
+export interface ArticleOutline {
+  ArticleId:          string;
+  TitleAr:            string;
+  TitleEn:            string;
+  CoverageCodes:      string[];
+  Priority:           string;
+  EstimatedWordCount: string;
+  KeyTopics:          string[];
+  Rationale:          string;
+}
+
+export interface Stage1Output {
+  risk_assessment: {
+    AcuteFactors:      string[];
+    AcutePoints:       number;
+    ComplexityFactors: string[];
+    ComplexityPoints:  number;
+    ProtectiveFactors: string[];
+    ProtectivePoints:  number;
+    TotalScore:        number;
+    RiskLevel:         string;
+    Rationale:         string;
+  };
+  summary_article:  string;
+  article_outlines: ArticleOutline[];
+  metadata: {
+    total_articles:       number;
+    generation_timestamp: string;
+    ramadan_period:       boolean;
+  };
+}
+
+// ── Test Scenarios ────────────────────────────────────────────────────────────
+
+export interface CreateTestScenarioRequest {
+  primaryDiagnosis:    string;
+  ageGroup:            AgeGroup;
+  comorbidities?:      string;
+  currentMedications?: string;
+  allergies?:          string;
+  medicalRestrictions?: string;
+}
+
+export interface ContentEvaluationResponse {
+  evaluationId:          string;
+  scenarioId:            string;
+  physicianId:           string;
+  accuracyRating:        number;
+  clarityRating:         number;
+  relevanceRating:       number;
+  completenessRating:    number;
+  isAppropriate:         boolean;
+  isCulturallySensitive: boolean;
+  isArabicQuality:       boolean;
+  whatWorked:            string | null;
+  needsImprovement:      string | null;
+  comments:              string | null;
+  submittedAt:           string;
+}
+
+export interface TestScenarioResponse {
+  scenarioId:           string;
+  physicianId:          string;
+  tenantId:             string;
+  status:               string;
+  patientDataJson:      string;
+  generatedContentJson: string | null;
+  createdAt:            string;
+  evaluation:           ContentEvaluationResponse | null;
+}
+
+export interface SubmitEvaluationRequest {
+  accuracyRating:        number;
+  clarityRating:         number;
+  relevanceRating:       number;
+  completenessRating:    number;
+  isAppropriate:         boolean;
+  isCulturallySensitive: boolean;
+  isArabicQuality:       boolean;
+  whatWorked?:           string;
+  needsImprovement?:     string;
+  comments?:             string;
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
+export interface ChatMessageResponse {
+  messageId:  string;
+  senderRole: "Physician" | "Patient";
+  content:    string;
+  sentAt:     string;
+  isRead:     boolean;
+}
+
+export interface ChatThreadResponse {
+  threadId:      string;
+  referralId:    string;
+  isEnabled:     boolean;
+  expiresAt:     string;
+  messageCount:  number;
+  createdAt:     string;
+  messages:      ChatMessageResponse[];
+  disclaimerAr:  string;
+  disclaimerEn:  string;
+}
+
+// ── Tenants ───────────────────────────────────────────────────────────────────
+
+export interface TenantSubscriptionSummary {
+  planType:         string;
+  casesAllocated:   number;
+  casesUsed:        number;
+  usagePercentage:  number;
+  billingCycleEnd:  string;
+}
+
+export interface TenantResponse {
+  tenantId:            string;
+  name:                string;
+  nameAr?:             string | null;
+  slug:                string;
+  country:             string | null;
+  city:                string | null;
+  isActive:            boolean;
+  createdAt:           string;
+  activeSubscription?: TenantSubscriptionSummary | null;
+}
+
+export interface CreateTenantRequest {
+  name:             string;
+  nameAr?:          string;
+  slug?:            string;
+  country?:         string;
+  city?:            string;
+  adminEmail?:      string;
+  planType?:        string;
+  casesAllocated?:  number;
+}
+
+export interface GenerateInvitationCodeRequest {
+  role:       string;
+  tenantId?:  string;
+  expiresAt?: string;
+  maxUses?:   number;
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export interface UserResponse {
+  userId:    string;
+  email:     string;
+  fullName:  string;
+  role:      string;
+  isActive:  boolean;
+  createdAt: string;
+}
+
+export interface CreateUserRequest {
+  email:    string;
+  fullName: string;
+  role:     string;
+  tenantId: string;
+}
+
+// ── Tenant Settings ───────────────────────────────────────────────────────────
+
+export interface TenantSettingsResponse {
+  tenantId:               string;
+  patientNamePolicy:      string;
+  whatsAppEnabled:        boolean;
+  chatEnabled:            boolean;
+  notificationDelayHours: number;
+}
+
+export interface UpdateTenantSettingsRequest {
+  patientNamePolicy?:      string;
+  whatsAppEnabled?:        boolean;
+  chatEnabled?:            boolean;
+  notificationDelayHours?: number;
+}
+
+// ── Assistant Links ───────────────────────────────────────────────────────────
+
+export interface AssistantLinkResponse {
+  linkId:        string;
+  assistantId:   string;
+  assistantName: string;
+  physicianId:   string;
+  physicianName: string;
+  createdAt:     string;
+}
+
+export interface CreateAssistantLinkRequest {
+  assistantId: string;
+  physicianId: string;
 }

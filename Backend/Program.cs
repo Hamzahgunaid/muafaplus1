@@ -88,7 +88,10 @@ try
                 ValidAudience = builder.Configuration["Jwt:Audience"] ?? "muafaplus-ui",
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(jwtSecret)),
-                ClockSkew = TimeSpan.FromMinutes(1)
+                ClockSkew = TimeSpan.FromMinutes(1),
+                // Phase 3.6: "Role" is used in all JWTs (provider + patient).
+                // Required for [Authorize(Roles = "...")] to work correctly.
+                RoleClaimType = "Role"
             };
         });
 
@@ -96,11 +99,17 @@ try
 
     builder.Services.AddSingleton<PromptBuilder>();
     builder.Services.AddSingleton<RiskCalculatorService>();
+    builder.Services.AddSingleton<ProfileHashService>();
+    builder.Services.AddScoped<ArticleLibraryService>();
     builder.Services.AddScoped<JwtService>();
     builder.Services.AddScoped<MuafaApiClient>();
     builder.Services.AddScoped<WorkflowService>();
     builder.Services.AddScoped<GenerationJobService>();
     builder.Services.AddScoped<ExportService>();
+    builder.Services.AddScoped<InvitationCodeService>();
+    builder.Services.AddScoped<TenantService>();
+    builder.Services.AddScoped<ReferralService>();
+    builder.Services.AddHttpClient<WhatsAppService>();
 
     QuestPDF.Settings.License = LicenseType.Community;
 
@@ -117,11 +126,25 @@ try
 
     var allowedOrigins = builder.Configuration
         .GetSection("Cors:AllowedOrigins")
-        .Get<string[]>()
-        ?? new[] { "http://localhost:3000", "https://localhost:3000" };
+        .Get<string[]>();
+
+    // Defensive fallback — log what we got
+    if (allowedOrigins == null || allowedOrigins.Length == 0)
+    {
+        allowedOrigins = new[] {
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "https://muafaplus1.vercel.app"
+        };
+        Console.WriteLine("CORS: Using hardcoded fallback origins");
+    }
+    else
+    {
+        Console.WriteLine($"CORS: Loaded {allowedOrigins.Length} origins: {string.Join(", ", allowedOrigins)}");
+    }
 
     builder.Services.AddCors(opts =>
-        opts.AddDefaultPolicy(policy =>
+        opts.AddPolicy("MuafaPolicy", policy =>
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyMethod()
                   .AllowAnyHeader()
@@ -160,13 +183,14 @@ try
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<MuafaDbContext>();
+        db.Database.Migrate();
+    }
+
     if (app.Environment.IsDevelopment())
     {
-        using var scope = app.Services.CreateScope();
-        scope.ServiceProvider
-            .GetRequiredService<MuafaDbContext>()
-            .Database.Migrate();
-
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
@@ -177,7 +201,8 @@ try
 
     if (app.Environment.IsDevelopment())
         app.UseHttpsRedirection();
-    app.UseCors();
+    app.UseRouting();
+    app.UseCors("MuafaPolicy");
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();

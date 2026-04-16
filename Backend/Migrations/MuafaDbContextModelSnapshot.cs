@@ -22,6 +22,369 @@ namespace MuafaPlus.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MuafaPlus.Models.AppUser", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mobile")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("MustResetOnNextLogin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Physician");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = new Guid("00000000-0000-0000-0000-000000000001"),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "ahmed.sana@hospital.ye",
+                            FullName = "Dr. Ahmed Al-Sana",
+                            IsActive = true,
+                            MustResetOnNextLogin = true,
+                            PasswordHash = "$2a$12$YA59.209V0gVCqlmF2Gu4.4ds.ETlKE/MMNT0PpTNQUQABUMbAf7i",
+                            Role = "Physician"
+                        },
+                        new
+                        {
+                            UserId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "fatima.hakim@clinic.ye",
+                            FullName = "Dr. Fatima Al-Hakim",
+                            IsActive = true,
+                            MustResetOnNextLogin = true,
+                            PasswordHash = "$2a$12$YA59.209V0gVCqlmF2Gu4.4ds.ETlKE/MMNT0PpTNQUQABUMbAf7i",
+                            Role = "Physician"
+                        },
+                        new
+                        {
+                            UserId = new Guid("00000000-0000-0000-0000-000000000003"),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "mohammed.z@diabetes.ye",
+                            FullName = "Dr. Mohammed Al-Zubairi",
+                            IsActive = true,
+                            MustResetOnNextLogin = true,
+                            PasswordHash = "$2a$12$YA59.209V0gVCqlmF2Gu4.4ds.ETlKE/MMNT0PpTNQUQABUMbAf7i",
+                            Role = "Physician"
+                        },
+                        new
+                        {
+                            UserId = new Guid("00000000-0000-0000-0000-000000000099"),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "admin@muafaplus.com",
+                            FullName = "Muafa+ Super Admin",
+                            IsActive = true,
+                            MustResetOnNextLogin = true,
+                            PasswordHash = "$2a$12$YA59.209V0gVCqlmF2Gu4.4ds.ETlKE/MMNT0PpTNQUQABUMbAf7i",
+                            Role = "SuperAdmin"
+                        });
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ArticleEngagement", b =>
+                {
+                    b.Property<Guid>("EngagementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArticleId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("Depth25At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("Depth50At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("Depth75At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reaction")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ReferralId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TimeOnArticleSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("EngagementId");
+
+                    b.HasIndex("ReferralId");
+
+                    b.ToTable("ArticleEngagements");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ArticleLibrary", b =>
+                {
+                    b.Property<Guid>("LibraryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("FirstGeneratedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int>("HitCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("LastHitAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProfileHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Stage1ResultJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("LibraryId");
+
+                    b.HasIndex("ProfileHash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("ArticleLibrary", (string)null);
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.AssistantPhysicianLink", b =>
+                {
+                    b.Property<Guid>("LinkId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssistantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("LinkedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PhysicianId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("LinkId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("AssistantId", "TenantId");
+
+                    b.ToTable("AssistantPhysicianLinks");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ChatMessage", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("SenderRole")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SentAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("ThreadId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("ThreadId", "SentAt");
+
+                    b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ChatThread", b =>
+                {
+                    b.Property<Guid>("ThreadId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("MessageCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("PhysicianId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ReferralId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ThreadId");
+
+                    b.HasIndex("ReferralId")
+                        .IsUnique();
+
+                    b.ToTable("ChatThreads");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ContentEvaluation", b =>
+                {
+                    b.Property<Guid>("EvaluationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AccuracyRating")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ClarityRating")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Comments")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("CompletenessRating")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsAppropriate")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsArabicQuality")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCulturallySensitive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NeedsImprovement")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("PhysicianId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RelevanceRating")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ScenarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("WhatWorked")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("EvaluationId");
+
+                    b.HasIndex("ScenarioId")
+                        .IsUnique();
+
+                    b.ToTable("ContentEvaluations");
+                });
+
             modelBuilder.Entity("MuafaPlus.Models.GeneratedArticle", b =>
                 {
                     b.Property<string>("ArticleId")
@@ -130,6 +493,107 @@ namespace MuafaPlus.Migrations
                     b.ToTable("GenerationSessions");
                 });
 
+            modelBuilder.Entity("MuafaPlus.Models.InvitationCode", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UsedByUserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Code");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("InvitationCodes");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "PH-TEST01",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedByUserId = "SYSTEM",
+                            ExpiresAt = new DateTime(2027, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Role = 2
+                        });
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.MessageLog", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeliveryStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RecipientPhone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ReferralId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("ReferralId");
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.ToTable("MessageLogs");
+                });
+
             modelBuilder.Entity("MuafaPlus.Models.Patient", b =>
                 {
                     b.Property<string>("PatientId")
@@ -178,6 +642,126 @@ namespace MuafaPlus.Migrations
                     b.ToTable("Patients");
                 });
 
+            modelBuilder.Entity("MuafaPlus.Models.PatientAccess", b =>
+                {
+                    b.Property<Guid>("AccessId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AccessCode")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("AccessId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("PhoneNumber", "TenantId")
+                        .IsUnique();
+
+                    b.ToTable("PatientAccesses");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.PatientFeedback", b =>
+                {
+                    b.Property<Guid>("FeedbackId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsHelpful")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ReferralId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("FeedbackId");
+
+                    b.HasIndex("ReferralId")
+                        .IsUnique();
+
+                    b.ToTable("PatientFeedbacks");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.PatientProfile", b =>
+                {
+                    b.Property<Guid>("ProfileId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AgeGroup")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Allergies")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Comorbidities")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("CurrentMedications")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MedicalRestrictions")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PatientName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PrimaryDiagnosis")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("ReferralId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ProfileId");
+
+                    b.HasIndex("ReferralId")
+                        .IsUnique();
+
+                    b.ToTable("PatientProfiles");
+                });
+
             modelBuilder.Entity("MuafaPlus.Models.Physician", b =>
                 {
                     b.Property<string>("PhysicianId")
@@ -186,6 +770,11 @@ namespace MuafaPlus.Migrations
                     b.Property<string>("Address")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("ChatEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("City")
                         .HasMaxLength(100)
@@ -259,6 +848,9 @@ namespace MuafaPlus.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -274,12 +866,15 @@ namespace MuafaPlus.Migrations
                     b.HasIndex("LicenseNumber")
                         .IsUnique();
 
+                    b.HasIndex("TenantId");
+
                     b.ToTable("Physicians");
 
                     b.HasData(
                         new
                         {
                             PhysicianId = "PHY001",
+                            ChatEnabled = false,
                             City = "Sana'a",
                             Country = "Yemen",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -298,6 +893,7 @@ namespace MuafaPlus.Migrations
                         new
                         {
                             PhysicianId = "PHY002",
+                            ChatEnabled = false,
                             City = "Aden",
                             Country = "Yemen",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -316,6 +912,7 @@ namespace MuafaPlus.Migrations
                         new
                         {
                             PhysicianId = "PHY003",
+                            ChatEnabled = false,
                             City = "Sana'a",
                             Country = "Yemen",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -381,6 +978,316 @@ namespace MuafaPlus.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MuafaPlus.Models.Referral", b =>
+                {
+                    b.Property<Guid>("ReferralId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PatientAccessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PhysicianId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RiskLevel")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("ScheduledDeliveryAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SessionId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("WhatsAppDelivery")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("ReferralId");
+
+                    b.HasIndex("PatientAccessId");
+
+                    b.HasIndex("TenantId", "PhysicianId");
+
+                    b.ToTable("Referrals");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ReferralEngagement", b =>
+                {
+                    b.Property<Guid>("ReferralId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AppOpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FeedbackSubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("MessageSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("Stage2RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("SummaryViewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ReferralId");
+
+                    b.ToTable("ReferralEngagements");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.Tenant", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("LogoUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("TenantId");
+
+                    b.ToTable("Tenants");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.TenantSettings", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ChatEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("NotificationDelayHours")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2);
+
+                    b.Property<int>("PatientChatWindowDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(7);
+
+                    b.Property<int>("PatientNamePolicy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WhatsAppSenderId")
+                        .HasColumnType("text");
+
+                    b.HasKey("TenantId");
+
+                    b.ToTable("TenantSettings");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.TenantSubscription", b =>
+                {
+                    b.Property<Guid>("SubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("BillingCycleEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("BillingCycleStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CasesAllocated")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CasesUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("PlanType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("SubscriptionId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("TenantSubscriptions");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.TestScenario", b =>
+                {
+                    b.Property<Guid>("ScenarioId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("GeneratedContentJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PatientDataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhysicianId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ScenarioId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("PhysicianId", "TenantId");
+
+                    b.ToTable("TestScenarios");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.UserRole", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId", "TenantId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("UserId", "TenantId");
+
+                    b.ToTable("UserRoles");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.AppUser", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ArticleEngagement", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Referral", "Referral")
+                        .WithMany("ArticleEngagements")
+                        .HasForeignKey("ReferralId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Referral");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.AssistantPhysicianLink", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany("AssistantPhysicianLinks")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ChatMessage", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.ChatThread", "Thread")
+                        .WithMany("Messages")
+                        .HasForeignKey("ThreadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Thread");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ChatThread", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Referral", "Referral")
+                        .WithOne("ChatThread")
+                        .HasForeignKey("MuafaPlus.Models.ChatThread", "ReferralId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Referral");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ContentEvaluation", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.TestScenario", "Scenario")
+                        .WithOne("Evaluation")
+                        .HasForeignKey("MuafaPlus.Models.ContentEvaluation", "ScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Scenario");
+                });
+
             modelBuilder.Entity("MuafaPlus.Models.GeneratedArticle", b =>
                 {
                     b.HasOne("MuafaPlus.Models.GenerationSession", "GenerationSession")
@@ -411,6 +1318,35 @@ namespace MuafaPlus.Migrations
                     b.Navigation("Physician");
                 });
 
+            modelBuilder.Entity("MuafaPlus.Models.InvitationCode", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany("InvitationCodes")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.MessageLog", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Referral", "Referral")
+                        .WithMany("MessageLogs")
+                        .HasForeignKey("ReferralId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany("MessageLogs")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Referral");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("MuafaPlus.Models.Patient", b =>
                 {
                     b.HasOne("MuafaPlus.Models.Physician", "Physician")
@@ -420,6 +1356,47 @@ namespace MuafaPlus.Migrations
                         .IsRequired();
 
                     b.Navigation("Physician");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.PatientAccess", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany("PatientAccesses")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.PatientFeedback", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Referral", "Referral")
+                        .WithOne("Feedback")
+                        .HasForeignKey("MuafaPlus.Models.PatientFeedback", "ReferralId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Referral");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.PatientProfile", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Referral", "Referral")
+                        .WithOne("Profile")
+                        .HasForeignKey("MuafaPlus.Models.PatientProfile", "ReferralId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Referral");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.Physician", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("MuafaPlus.Models.PhysicianCredential", b =>
@@ -433,6 +1410,93 @@ namespace MuafaPlus.Migrations
                     b.Navigation("Physician");
                 });
 
+            modelBuilder.Entity("MuafaPlus.Models.Referral", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.PatientAccess", "PatientAccess")
+                        .WithMany("Referrals")
+                        .HasForeignKey("PatientAccessId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany("Referrals")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PatientAccess");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ReferralEngagement", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Referral", "Referral")
+                        .WithOne("Engagement")
+                        .HasForeignKey("MuafaPlus.Models.ReferralEngagement", "ReferralId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Referral");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.TenantSettings", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithOne("Settings")
+                        .HasForeignKey("MuafaPlus.Models.TenantSettings", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.TenantSubscription", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.TestScenario", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.UserRole", b =>
+                {
+                    b.HasOne("MuafaPlus.Models.Tenant", "Tenant")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MuafaPlus.Models.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.ChatThread", b =>
+                {
+                    b.Navigation("Messages");
+                });
+
             modelBuilder.Entity("MuafaPlus.Models.GenerationSession", b =>
                 {
                     b.Navigation("GeneratedArticles");
@@ -443,11 +1507,55 @@ namespace MuafaPlus.Migrations
                     b.Navigation("GenerationSessions");
                 });
 
+            modelBuilder.Entity("MuafaPlus.Models.PatientAccess", b =>
+                {
+                    b.Navigation("Referrals");
+                });
+
             modelBuilder.Entity("MuafaPlus.Models.Physician", b =>
                 {
                     b.Navigation("GenerationSessions");
 
                     b.Navigation("Patients");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.Referral", b =>
+                {
+                    b.Navigation("ArticleEngagements");
+
+                    b.Navigation("ChatThread");
+
+                    b.Navigation("Engagement");
+
+                    b.Navigation("Feedback");
+
+                    b.Navigation("MessageLogs");
+
+                    b.Navigation("Profile");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.Tenant", b =>
+                {
+                    b.Navigation("AssistantPhysicianLinks");
+
+                    b.Navigation("InvitationCodes");
+
+                    b.Navigation("MessageLogs");
+
+                    b.Navigation("PatientAccesses");
+
+                    b.Navigation("Referrals");
+
+                    b.Navigation("Settings");
+
+                    b.Navigation("Subscriptions");
+
+                    b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("MuafaPlus.Models.TestScenario", b =>
+                {
+                    b.Navigation("Evaluation");
                 });
 #pragma warning restore 612, 618
         }

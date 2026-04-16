@@ -6,13 +6,15 @@ using System.Text.Json;
 namespace MuafaPlus.Services;
 
 /// <summary>
-/// Client for interacting with the Claude API via Anthropic.SDK v4.x.
+/// Client for interacting with the Claude API via Anthropic.SDK v5.x.
 ///
-/// SDK v4 changes from v3:
-///   - SystemMessage is a plain string property on MessageParameters (no SystemMessage type).
-///   - CacheControl / CacheControlType removed — prompt caching not available in this SDK version.
-///   - Usage only exposes InputTokens / OutputTokens (no cache token fields).
-///   - Message content is List&lt;ContentBase&gt;; use Message(RoleType, string) constructor.
+/// Prompt caching (SDK v5):
+///   - MessageParameters.System is List&lt;SystemMessage&gt; (not a plain string).
+///   - SystemMessage(text, CacheControl) marks the block for server-side caching.
+///   - PromptCaching = PromptCacheType.FineGrained activates per-block cache_control.
+///   - Usage exposes CacheCreationInputTokens and CacheReadInputTokens.
+///   - Cache TTL is ~5 minutes (ephemeral). Stage 2 articles within the same session
+///     reuse the cached system prompt, cutting input-token cost by ~10×.
 /// </summary>
 public class MuafaApiClient
 {
@@ -72,7 +74,8 @@ public class MuafaApiClient
             {
                 Model         = _model,
                 MaxTokens     = _maxTokens,
-                SystemMessage = systemPrompt,
+                PromptCaching = PromptCacheType.FineGrained,
+                System        = [new SystemMessage(systemPrompt, new CacheControl { Type = CacheControlType.ephemeral })],
                 Messages      = [new Message(RoleType.User, userPrompt)]
             };
 
@@ -83,8 +86,9 @@ public class MuafaApiClient
 
             var usage = MapUsage(response.Usage);
             _logger.LogInformation(
-                "Stage 1 complete — in:{In} out:{Out} cost:${Cost:F4}",
-                usage.InputTokens, usage.OutputTokens, usage.CalculateCost());
+                "Stage 1 complete — in:{In} out:{Out} cacheWrite:{CW} cacheRead:{CR} cost:${Cost:F4}",
+                usage.InputTokens, usage.OutputTokens,
+                usage.CacheCreationTokens, usage.CacheReadTokens, usage.CalculateCost());
 
             return new Stage1Result
             {
@@ -130,7 +134,8 @@ public class MuafaApiClient
             {
                 Model         = _model,
                 MaxTokens     = _maxTokens,
-                SystemMessage = systemPrompt,
+                PromptCaching = PromptCacheType.FineGrained,
+                System        = [new SystemMessage(systemPrompt, new CacheControl { Type = CacheControlType.ephemeral })],
                 Messages      = [new Message(RoleType.User, userPrompt)]
             };
 
@@ -141,8 +146,9 @@ public class MuafaApiClient
 
             var usage = MapUsage(response.Usage);
             _logger.LogInformation(
-                "Stage 2 complete — article:{Id} in:{In} out:{Out} cost:${Cost:F4}",
-                articleSpec.ArticleId, usage.InputTokens, usage.OutputTokens, usage.CalculateCost());
+                "Stage 2 complete — article:{Id} in:{In} out:{Out} cacheWrite:{CW} cacheRead:{CR} cost:${Cost:F4}",
+                articleSpec.ArticleId, usage.InputTokens, usage.OutputTokens,
+                usage.CacheCreationTokens, usage.CacheReadTokens, usage.CalculateCost());
 
             return new Stage2Result
             {
@@ -204,7 +210,7 @@ public class MuafaApiClient
     {
         InputTokens         = sdkUsage.InputTokens,
         OutputTokens        = sdkUsage.OutputTokens,
-        CacheCreationTokens = 0,  // SDK v4 does not expose cache token counts
-        CacheReadTokens     = 0
+        CacheCreationTokens = sdkUsage.CacheCreationInputTokens,
+        CacheReadTokens     = sdkUsage.CacheReadInputTokens,
     };
 }
