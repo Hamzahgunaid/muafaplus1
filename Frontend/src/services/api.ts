@@ -183,6 +183,14 @@ export const testScenarioApi = {
     );
     return data;
   },
+
+  generateScenarioArticle: async (id: string, index: number): Promise<string> => {
+    const { data } = await http.post<ApiResponse<{ content: string }>>(
+      `/test-scenarios/${id}/generate-article?index=${index}`
+    );
+    if (!data.success || !data.data?.content) throw new Error(data.error ?? "Generation failed");
+    return data.data.content;
+  },
 };
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
