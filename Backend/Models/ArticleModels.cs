@@ -8,32 +8,40 @@ public class ArticleSpec
 {
     [Required]
     [RegularExpression(@"^[a-z_]+_\d{3}$")]
+    [JsonPropertyName("article_id")]
     public string ArticleId { get; set; } = string.Empty;
 
     [Required]
+    [JsonPropertyName("title_ar")]
     public string TitleAr { get; set; } = string.Empty;
 
     [Required]
+    [JsonPropertyName("title_en")]
     public string TitleEn { get; set; } = string.Empty;
 
     [Required]
     [MinLength(1)]
     [MaxLength(2)]
+    [JsonPropertyName("coverage_codes")]
     public List<string> CoverageCodes { get; set; } = [];
 
     [Required]
     [RegularExpression("^(CRITICAL|HIGH|MEDIUM|REFERENCE)$")]
+    [JsonPropertyName("priority")]
     public string Priority { get; set; } = "MEDIUM";
 
     [Required]
+    [JsonPropertyName("estimated_word_count")]
     public string EstimatedWordCount { get; set; } = string.Empty;
 
     [Required]
     [MaxLength(3)]
+    [JsonPropertyName("key_topics")]
     public List<string> KeyTopics { get; set; } = [];
 
     [Required]
     [MinLength(10)]
+    [JsonPropertyName("rationale")]
     public string Rationale { get; set; } = string.Empty;
 }
 
@@ -45,20 +53,32 @@ public class ArticleSpec
 /// </summary>
 public class RiskAssessment
 {
+    [JsonPropertyName("acute_factors")]
     public List<string> AcuteFactors      { get; set; } = [];
+
+    [JsonPropertyName("acute_points")]
     public decimal      AcutePoints       { get; set; }
 
+    [JsonPropertyName("complexity_factors")]
     public List<string> ComplexityFactors { get; set; } = [];
+
+    [JsonPropertyName("complexity_points")]
     public decimal      ComplexityPoints  { get; set; }
 
+    [JsonPropertyName("protective_factors")]
     public List<string> ProtectiveFactors { get; set; } = [];
+
+    [JsonPropertyName("protective_points")]
     public decimal      ProtectivePoints  { get; set; }
 
+    [JsonPropertyName("total_score")]
     public decimal      TotalScore        { get; set; }
 
     [RegularExpression("^(LOW|MODERATE|HIGH|CRITICAL)$")]
+    [JsonPropertyName("risk_level")]
     public string       RiskLevel         { get; set; } = "MODERATE";
 
+    [JsonPropertyName("rationale")]
     public string       Rationale         { get; set; } = string.Empty;
 }
 

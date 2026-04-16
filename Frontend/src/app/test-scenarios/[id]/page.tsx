@@ -140,7 +140,7 @@ function GeneratedContentCard({ scenario }: { scenario: TestScenarioResponse }) 
   return (
     <Card title="المحتوى المولّد">
       <ArticleContentViewer
-        riskLevel={generated?.risk_assessment?.RiskLevel ?? null}
+        riskLevel={generated?.risk_assessment?.risk_level ?? null}
         summaryArticle={generated?.summary_article ?? null}
         articleOutlines={generated?.article_outlines ?? []}
         mode="test-scenario"

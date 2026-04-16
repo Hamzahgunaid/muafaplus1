@@ -88,7 +88,7 @@ export default function NewTestScenarioPage() {
   // ── Success preview ─────────────────────────────────────────────────────────
   if (success) {
     const generated = parseGeneratedContent(success.generatedContentJson);
-    const riskLevel = generated?.risk_assessment?.RiskLevel ?? null;
+    const riskLevel = generated?.risk_assessment?.risk_level ?? null;
     const summary   = generated?.summary_article ?? null;
     const articles  = generated?.article_outlines ?? [];
 
@@ -146,7 +146,7 @@ export default function NewTestScenarioPage() {
                   <ol className="space-y-1 list-decimal list-inside">
                     {articles.map((a, i) => (
                       <li key={i} className="text-sm text-gray-700">
-                        {a.TitleAr || a.TitleEn || `مقالة ${i + 1}`}
+                        {a.title_ar || a.title_en || `مقالة ${i + 1}`}
                       </li>
                     ))}
                   </ol>

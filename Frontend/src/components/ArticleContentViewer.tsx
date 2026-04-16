@@ -112,7 +112,7 @@ export default function ArticleContentViewer({
                 <li key={i} className="flex flex-col gap-2 text-sm px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-gray-700">
-                      {i + 1}. {outline.TitleAr || outline.TitleEn || `مقالة ${i + 1}`}
+                      {i + 1}. {outline.title_ar || outline.title_en || `مقالة ${i + 1}`}
                     </span>
 
                     {onGenerate && (

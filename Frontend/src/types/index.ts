@@ -208,30 +208,30 @@ export interface ReferralEngagementResponse {
 
 // ── Stage1Output — matches Backend/Models/ArticleModels.cs Stage1Output ──────
 // JSON keys match [JsonPropertyName] attributes exactly.
-// Fields without [JsonPropertyName] serialize as PascalCase (C# default).
+// ArticleSpec and RiskAssessment now have full snake_case [JsonPropertyName] attributes.
 
 export interface ArticleOutline {
-  ArticleId:          string;
-  TitleAr:            string;
-  TitleEn:            string;
-  CoverageCodes:      string[];
-  Priority:           string;
-  EstimatedWordCount: string;
-  KeyTopics:          string[];
-  Rationale:          string;
+  article_id:           string;
+  title_ar:             string;
+  title_en:             string;
+  coverage_codes:       string[];
+  priority:             string;
+  estimated_word_count: string;
+  key_topics:           string[];
+  rationale:            string;
 }
 
 export interface Stage1Output {
   risk_assessment: {
-    AcuteFactors:      string[];
-    AcutePoints:       number;
-    ComplexityFactors: string[];
-    ComplexityPoints:  number;
-    ProtectiveFactors: string[];
-    ProtectivePoints:  number;
-    TotalScore:        number;
-    RiskLevel:         string;
-    Rationale:         string;
+    acute_factors:      string[];
+    acute_points:       number;
+    complexity_factors: string[];
+    complexity_points:  number;
+    protective_factors: string[];
+    protective_points:  number;
+    total_score:        number;
+    risk_level:         string;
+    rationale:          string;
   };
   summary_article:  string;
   article_outlines: ArticleOutline[];
