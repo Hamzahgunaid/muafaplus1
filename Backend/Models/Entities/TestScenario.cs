@@ -26,6 +26,13 @@ public class TestScenario
     /// <summary>Stage1Output JSON — set after generation. Null until Status = Generated.</summary>
     public string? GeneratedContentJson { get; set; }
 
+    /// <summary>
+    /// Stores generated article content keyed by
+    /// article index. JSON object: { "0": "...", "1": "..." }
+    /// Populated incrementally as articles are generated.
+    /// </summary>
+    public string? GeneratedArticlesJson { get; set; }
+
     public TestScenarioStatus Status { get; set; } = TestScenarioStatus.Created;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
