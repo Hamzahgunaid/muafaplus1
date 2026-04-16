@@ -332,6 +332,7 @@ public class ReferralResponse
     public DateTime? DeliveredAt         { get; set; }
     public DateTime  CreatedAt           { get; set; }
     public string?   SessionId           { get; set; }
+    public bool      ChatEnabled         { get; set; }
 
     public ReferralEngagementResponse? Engagement { get; set; }
 }
