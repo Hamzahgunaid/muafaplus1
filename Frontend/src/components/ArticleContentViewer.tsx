@@ -31,6 +31,7 @@ interface ArticleContentViewerProps {
   articleOutlines?:   ArticleOutline[];
   referralArticles?:  ReferralArticleResponse[];
   mode:               "referral" | "test-scenario";
+  initialContent?:    Record<number, string>;
   onGenerate?:        (index: number) => Promise<string | void>;
 }
 
@@ -40,14 +41,19 @@ export default function ArticleContentViewer({
   articleOutlines,
   referralArticles,
   mode,
+  initialContent,
   onGenerate,
 }: ArticleContentViewerProps) {
   const [mounted,           setMounted]           = useState(false);
   const [expanded,          setExpanded]          = useState(false);
   const [generating,        setGenerating]        = useState<number | null>(null);
   const [expandedIndex,     setExpandedIndex]     = useState<number | null>(null);
-  const [generatedSet,      setGeneratedSet]      = useState<Set<number>>(new Set());
-  const [generatedContent,  setGeneratedContent]  = useState<Record<number, string>>({});
+  const [generatedSet,      setGeneratedSet]      = useState<Set<number>>(
+    () => new Set(Object.keys(initialContent ?? {}).map(Number))
+  );
+  const [generatedContent,  setGeneratedContent]  = useState<Record<number, string>>(
+    () => initialContent ?? {}
+  );
 
   useEffect(() => setMounted(true), []);
 

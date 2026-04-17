@@ -137,6 +137,21 @@ function GeneratedContentCard({ scenario }: { scenario: TestScenarioResponse }) 
   const generated = parseJson<Stage1Output>(scenario.generatedContentJson);
   if (!generated) return null;
 
+  // Change 1 & 2 — parse saved articles to seed generatedContent + generatedSet state
+  const initialContent: Record<number, string> = (() => {
+    if (!scenario.generatedArticlesJson) return {};
+    try {
+      const saved = JSON.parse(scenario.generatedArticlesJson);
+      const result: Record<number, string> = {};
+      Object.entries(saved).forEach(([key, value]) => {
+        result[parseInt(key)] = value as string;
+      });
+      return result;
+    } catch {
+      return {};
+    }
+  })();
+
   return (
     <Card title="المحتوى المولّد">
       <ArticleContentViewer
@@ -144,7 +159,12 @@ function GeneratedContentCard({ scenario }: { scenario: TestScenarioResponse }) 
         summaryArticle={generated?.summary_article ?? null}
         articleOutlines={generated?.article_outlines ?? []}
         mode="test-scenario"
+        initialContent={initialContent}
         onGenerate={async (index) => {
+          // Change 3 — skip API call if content already in state
+          if (initialContent[index]) {
+            return initialContent[index];
+          }
           return await testScenarioApi.generateScenarioArticle(scenario.scenarioId, index);
         }}
       />

@@ -427,39 +427,70 @@ public class TestScenariosController : ControllerBase
                 ErrorType = "IndexOutOfRange"
             });
 
-        var articleSpec = stage1.ArticleOutlines[index];
-        var riskScore   = _riskCalculator.Calculate(patientData);   // Rule 1 — always C#
-
+        // 5. Deserialise existing saved articles
+        Dictionary<string, string> existing;
         try
         {
-            var result = await _apiClient.GenerateStage2Async(patientData, articleSpec, riskScore);
+            existing = JsonSerializer.Deserialize<Dictionary<string, string>>(
+                scenario.GeneratedArticlesJson ?? "{}", _jsonOpts) ?? new();
+        }
+        catch (JsonException)
+        {
+            existing = new();
+        }
 
-            if (!result.Success || result.Output == null)
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
-                {
-                    Success = false, Error = result.ErrorMessage ?? "Stage 2 generation failed.",
-                    ErrorType = "GenerationFailed"
-                });
-
-            _logger.LogInformation(
-                "GenerateArticle complete — scenario:{ScenarioId} index:{Index} article:{ArticleId}",
-                id, index, articleSpec.ArticleId);
-
+        // 6. Guard 2 — return cached content if already generated
+        var key = index.ToString();
+        if (existing.TryGetValue(key, out var cached))
             return Ok(new ApiResponse<GenerateArticleResponse>
             {
                 Success = true,
-                Data    = new GenerateArticleResponse { Content = result.Output.Article.ContentAr }
+                Data    = new GenerateArticleResponse { Content = cached }
             });
+
+        // 7. Call Anthropic Stage 2 (Rule 1 — risk always recalculated in C#)
+        var articleSpec = stage1.ArticleOutlines[index];
+        var riskScore   = _riskCalculator.Calculate(patientData);
+
+        Stage2Result result;
+        try
+        {
+            result = await _apiClient.GenerateStage2Async(patientData, articleSpec, riskScore);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "GenerateArticle error — scenario:{ScenarioId} index:{Index}", id, index);
+                "GenerateArticle Anthropic error — scenario:{ScenarioId} index:{Index}", id, index);
             return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
             {
-                Success = false, Error = "Internal server error.", ErrorType = ex.GetType().Name
+                Success = false, Error = "Anthropic API call failed.", ErrorType = ex.GetType().Name
             });
         }
+
+        if (!result.Success || result.Output == null)
+            return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
+            {
+                Success = false, Error = result.ErrorMessage ?? "Stage 2 generation failed.",
+                ErrorType = "GenerationFailed"
+            });
+
+        var generatedContent = result.Output.Article.ContentAr;
+
+        // 8–9. Merge and persist — only reached on successful Anthropic response
+        existing[key]                  = generatedContent;
+        scenario.GeneratedArticlesJson = JsonSerializer.Serialize(existing);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "GenerateArticle complete — scenario:{ScenarioId} index:{Index} article:{ArticleId}",
+            id, index, articleSpec.ArticleId);
+
+        // 10. Return
+        return Ok(new ApiResponse<GenerateArticleResponse>
+        {
+            Success = true,
+            Data    = new GenerateArticleResponse { Content = generatedContent }
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
