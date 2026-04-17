@@ -478,13 +478,14 @@ public class TestScenariosController : ControllerBase
 
     private static TestScenarioResponse MapToResponse(TestScenario scenario) => new()
     {
-        ScenarioId           = scenario.ScenarioId,
-        PhysicianId          = scenario.PhysicianId,
-        TenantId             = scenario.TenantId,
-        Status               = scenario.Status.ToString(),
-        PatientDataJson      = scenario.PatientDataJson,
-        GeneratedContentJson = scenario.GeneratedContentJson,
-        CreatedAt            = scenario.CreatedAt,
+        ScenarioId            = scenario.ScenarioId,
+        PhysicianId           = scenario.PhysicianId,
+        TenantId              = scenario.TenantId,
+        Status                = scenario.Status.ToString(),
+        PatientDataJson       = scenario.PatientDataJson,
+        GeneratedContentJson  = scenario.GeneratedContentJson,
+        GeneratedArticlesJson = scenario.GeneratedArticlesJson,
+        CreatedAt             = scenario.CreatedAt,
         Evaluation           = scenario.Evaluation == null
                                ? null
                                : MapEvalToResponse(scenario.Evaluation)

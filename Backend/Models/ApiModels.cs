@@ -448,7 +448,8 @@ public class TestScenarioResponse
     public Guid     TenantId             { get; set; }
     public string   Status               { get; set; } = string.Empty;
     public string   PatientDataJson      { get; set; } = string.Empty;
-    public string?  GeneratedContentJson { get; set; }
+    public string?  GeneratedContentJson  { get; set; }
+    public string?  GeneratedArticlesJson { get; set; }
     public DateTime CreatedAt            { get; set; }
     public ContentEvaluationResponse? Evaluation { get; set; }
 }
