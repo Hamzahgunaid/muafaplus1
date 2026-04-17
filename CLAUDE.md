@@ -5,12 +5,33 @@ for post-diagnosis patient care in Yemen. Physicians refer patients and the
 system generates personalised Arabic health education articles via Claude AI,
 delivered through WhatsApp and a Flutter mobile app.
 
-## Current State — Phase 3.6 Complete (April 2026)
+## Current State — Phase 3.7 Complete (April 2026)
 Production is LIVE:
 - Frontend: https://muafaplus1.vercel.app
 - Backend: https://muafaplus1-production.up.railway.app
 - Database: PostgreSQL on Railway (NOT SQL Server)
 - GitHub: https://github.com/Hamzahgunaid/muafaplus1
+
+### Phase 3.7 — Test Scenario Article Generation + Bug Fixes (complete)
+- POST /test-scenarios/{id}/generate-article?index={n} — on-demand Stage 2 per article
+  - Re-runs RiskCalculatorService (Rule 1) before every Anthropic call
+  - Caches result in TestScenario.GeneratedArticlesJson keyed by article index
+  - Returns cached content immediately on repeat calls (no Anthropic call)
+  - SaveChangesAsync only called after confirmed Anthropic success (no partial saves)
+- TestScenario entity: added GeneratedArticlesJson (nullable text column)
+  - EF migration: AddGeneratedArticlesJsonToTestScenario — applied via db.Database.Migrate() on startup
+- TestScenarioResponse DTO: added GeneratedArticlesJson field + mapping
+- Frontend: ArticleContentViewer accepts initialContent prop to seed generatedContent +
+  generatedSet state on page load — articles already generated persist across refresh
+- Snake_case deserialisation fix: ArticleSpec and RiskAssessment were missing
+  [JsonPropertyName] attributes causing all fields except rationale to silently map
+  to empty strings from Anthropic's snake_case JSON. Fixed by adding full attribute set.
+  TypeScript ArticleOutline and Stage1Output.risk_assessment updated to snake_case keys.
+- ReferralResponse.ChatEnabled added — gates ChatCard display; populated from
+  ChatThread.IsEnabled via Include in GetReferralAsync; returns 403 gracefully
+- Tenant user management: GET/POST /api/v1/tenants/{id}/users endpoints added
+- ArticleContentViewer: ReactMarkdown rendering, mounted hydration guard, three-state
+  generate buttons (idle → generating → generated/cached)
 
 ### Phase 3.6 — Unified Auth + Role Enforcement (complete)
 - AppUser table: single source of truth for all provider logins (replaces PhysicianCredentials)
@@ -62,6 +83,9 @@ Test accounts:
 - mohammed.z@diabetes.ye / MuafaPlus2025! (Physician PHY003)
 
 Test invitation code: PH-TEST01 (Physician role, expires 2027-01-01)
+
+## Database — 19 Tables + 1 column (Phase 3.7)
+TestScenario.GeneratedArticlesJson — nullable text, stores { "0": "...", "1": "..." }
 
 ## Database — 19 Tables (Phase 2 complete)
 
@@ -123,6 +147,19 @@ POST /api/v1/referrals/{id}/engagement — track app_opened/summary_viewed/stage
 POST /api/v1/articles/{articleId}/engagement — track scroll depth + reaction [Authorize]
 POST /api/v1/referrals/{id}/feedback — patient feedback, 409 if duplicate [Authorize]
 
+### Test Scenarios (TestScenariosController)
+POST /api/v1/test-scenarios — create + Stage 1 generate, returns 201 [Authorize]
+GET  /api/v1/test-scenarios — list by physician [Authorize]
+GET  /api/v1/test-scenarios/{id} — single scenario + evaluation [Authorize]
+POST /api/v1/test-scenarios/{id}/evaluation — submit evaluation, 409 if duplicate [Authorize]
+POST /api/v1/test-scenarios/{id}/generate-article?index={n} — Stage 2 single article [Authorize]
+  → checks GeneratedArticlesJson cache first; saves result back after generation
+POST /api/v1/test-scenarios/generate/stream — SSE Stage 1 preview, does not save [Authorize]
+
+### Tenant Users (TenantsController)
+GET  /api/v1/tenants/{id}/users — list users for tenant [Authorize]
+POST /api/v1/tenants/{id}/users — create user with BCrypt password [Authorize]
+
 ### Content Generation (ContentGenerationController)
 POST /api/v1/ContentGeneration/generate/complete [Authorize]
 GET  /api/v1/ContentGeneration/health [AllowAnonymous]
@@ -179,10 +216,13 @@ Backend/Models/Entities/TenantRole.cs (shared enum)
 Backend/Models/Entities/Referral.cs
 Backend/Models/Entities/PatientAccess.cs
 Backend/Models/Entities/ArticleLibrary.cs
+Backend/Models/Entities/TestScenario.cs — GeneratedArticlesJson added Phase 3.7
+Backend/Models/ArticleModels.cs — ArticleSpec + RiskAssessment snake_case fix Phase 3.7
 Backend/Models/ApiModels.cs — all request/response DTOs
 Backend/Data/MuafaDbContext.cs — EF Core context + all DbSets
 Backend/Controllers/ReferralsController.cs
 Backend/Controllers/EngagementController.cs
+Backend/Controllers/TestScenariosController.cs
 
 ## Phase 2 — Complete
 - PatientAccess table (phone + 4-digit code authentication)
@@ -213,6 +253,24 @@ NavBar component shared across all pages.
 api.ts extended: 11 new functions covering referrals,
 test scenarios, chat, and tenant management.
 Total frontend routes: 14
+
+## Phase 3.7 — Frontend Components (complete)
+- ArticleContentViewer (Frontend/src/components/ArticleContentViewer.tsx)
+  Shared component used by test-scenarios/[id] and referrals/[id].
+  Props: riskLevel, summaryArticle, articleOutlines, referralArticles,
+         mode ("referral"|"test-scenario"), initialContent, onGenerate
+  - initialContent: Record<number,string> — seeds generatedContent + generatedSet state
+    on mount so persisted articles show correct button state without API call
+  - Three-state generate buttons: idle → جارٍ التوليد... → عرض →/إخفاء ▲
+  - ReactMarkdown rendering with @tailwindcss/typography prose classes
+  - mounted flag guards all ReactMarkdown renders to prevent hydration mismatch
+  - Article titles from outline.title_ar || outline.title_en (snake_case after fix)
+- TypeScript types updated (Frontend/src/types/index.ts):
+  ArticleOutline fields are now snake_case: title_ar, title_en, article_id,
+  coverage_codes, estimated_word_count, key_topics, rationale
+  Stage1Output.risk_assessment fields are snake_case: risk_level, acute_factors, etc.
+  TestScenarioResponse now includes generatedArticlesJson: string | null
+  ReferralResponse now includes chatEnabled: boolean
 
 ## Phase 4 Target — Flutter Mobile Application
 See specification document Section 13 for full scope.
@@ -304,6 +362,13 @@ RULE 12 — ArticleLibrary is the cache layer
 Always check ArticleLibraryService.GetByHashAsync() before calling Claude API.
 Always call ArticleLibraryService.SaveAsync() after successful generation.
 Never bypass the library check. TenantId = null for all shared entries.
+
+RULE 14 — ArticleSpec and RiskAssessment use snake_case [JsonPropertyName]
+Every field on ArticleSpec and RiskAssessment has a [JsonPropertyName] attribute
+mapping to the snake_case key the Stage 1 prompt instructs Anthropic to return.
+Never add a new field to these classes without the corresponding attribute.
+The TypeScript ArticleOutline interface and Stage1Output.risk_assessment type must
+use the same snake_case keys. Stage2Output.ArticleContent follows the same pattern.
 
 RULE 13 — WhatsApp delivery is always two messages
 Message 1: full summary article + app download link
