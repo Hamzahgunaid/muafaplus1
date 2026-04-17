@@ -271,14 +271,15 @@ export interface ContentEvaluationResponse {
 }
 
 export interface TestScenarioResponse {
-  scenarioId:           string;
-  physicianId:          string;
-  tenantId:             string;
-  status:               string;
-  patientDataJson:      string;
-  generatedContentJson: string | null;
-  createdAt:            string;
-  evaluation:           ContentEvaluationResponse | null;
+  scenarioId:            string;
+  physicianId:           string;
+  tenantId:              string;
+  status:                string;
+  patientDataJson:       string;
+  generatedContentJson:  string | null;
+  generatedArticlesJson: string | null;
+  createdAt:             string;
+  evaluation:            ContentEvaluationResponse | null;
 }
 
 export interface SubmitEvaluationRequest {
