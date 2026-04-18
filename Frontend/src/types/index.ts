@@ -364,15 +364,18 @@ export interface UserResponse {
   email:     string;
   fullName:  string;
   role:      string;
+  tenantId?: string | null;
   isActive:  boolean;
   createdAt: string;
 }
 
 export interface CreateUserRequest {
-  email:    string;
-  fullName: string;
-  role:     string;
-  tenantId: string;
+  email:      string;
+  fullName:   string;
+  password:   string;
+  role:       string;
+  specialty?: string;
+  tenantId:   string;
 }
 
 // ── Tenant Settings ───────────────────────────────────────────────────────────
@@ -383,6 +386,8 @@ export interface TenantSettingsResponse {
   whatsAppEnabled:        boolean;
   chatEnabled:            boolean;
   notificationDelayHours: number;
+  whatsAppSenderId?:      string | null;
+  patientChatWindowDays?: number;
 }
 
 export interface UpdateTenantSettingsRequest {
@@ -400,10 +405,23 @@ export interface AssistantLinkResponse {
   assistantName: string;
   physicianId:   string;
   physicianName: string;
-  createdAt:     string;
+  tenantId:      string;
+  isActive:      boolean;
+  linkedAt:      string;
 }
 
 export interface CreateAssistantLinkRequest {
   assistantId: string;
   physicianId: string;
+}
+
+export interface TenantSubscriptionResponse {
+  subscriptionId:    string;
+  planType:          string;
+  casesAllocated:    number;
+  casesUsed:         number;
+  billingCycleStart: string;
+  billingCycleEnd:   string;
+  isActive:          boolean;
+  usagePercentage:   number;
 }

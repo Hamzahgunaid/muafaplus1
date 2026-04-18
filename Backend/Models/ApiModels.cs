@@ -569,3 +569,15 @@ public class GenerateArticleResponse
 {
     public string Content { get; set; } = string.Empty;
 }
+
+public class AssistantLinkResponse
+{
+    public Guid     LinkId        { get; set; }
+    public string   AssistantId   { get; set; } = string.Empty;
+    public string   AssistantName { get; set; } = string.Empty;
+    public string   PhysicianId   { get; set; } = string.Empty;
+    public string   PhysicianName { get; set; } = string.Empty;
+    public Guid     TenantId      { get; set; }
+    public bool     IsActive      { get; set; }
+    public DateTime LinkedAt      { get; set; }
+}
