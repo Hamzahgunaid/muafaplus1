@@ -11,8 +11,7 @@ public class GenerationSession
     [Key]
     public string SessionId { get; set; } = Guid.NewGuid().ToString();
 
-    [Required]
-    public string PatientId { get; set; } = string.Empty;
+    public string? PatientId { get; set; }
 
     [Required]
     public string PhysicianId { get; set; } = string.Empty;

@@ -124,17 +124,19 @@ public class WorkflowService
         bool skipPatientCreation = false)
     {
         var sessionId = Guid.NewGuid().ToString();
-        var patientId = Guid.NewGuid().ToString();
         var riskScore = _riskCalculator.Calculate(patientData);
 
+        string? sessionPatientId = null;
         if (!skipPatientCreation)
         {
+            var patientId = Guid.NewGuid().ToString();
             await CreatePatientAsync(physicianId, patientData, patientId);
+            sessionPatientId = patientId;
         }
 
         var session = new GenerationSession
         {
-            SessionId   = sessionId, PatientId   = patientId,
+            SessionId   = sessionId, PatientId   = sessionPatientId,
             PhysicianId = physicianId, Stage      = "stage_1",
             Status      = "in_progress", RiskLevel = riskScore.RiskLevelString
         };

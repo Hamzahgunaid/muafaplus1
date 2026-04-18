@@ -448,7 +448,6 @@ namespace MuafaPlus.Migrations
                         .HasColumnType("character varying(500)");
 
                     b.Property<string>("PatientId")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("PhysicianId")
@@ -1307,8 +1306,7 @@ namespace MuafaPlus.Migrations
                     b.HasOne("MuafaPlus.Models.Patient", "Patient")
                         .WithMany("GenerationSessions")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("MuafaPlus.Models.Physician", "Physician")
                         .WithMany("GenerationSessions")
