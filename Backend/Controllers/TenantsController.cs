@@ -333,20 +333,34 @@ public class TenantsController : ControllerBase
                 ErrorType = "NotFound"
             });
 
-        var users = await _db.Users
+        var rawUsers = await _db.Users
             .Where(u => u.TenantId == id)
-            .OrderBy(u => u.CreatedAt)
-            .Select(u => new UserSummaryResponse
-            {
-                UserId    = u.UserId,
-                Email     = u.Email,
-                FullName  = u.FullName,
-                Role      = u.Role,
-                TenantId  = u.TenantId,
-                IsActive  = u.IsActive,
-                CreatedAt = u.CreatedAt
-            })
+            .Join(_db.UserRoles,
+                  u  => u.UserId,
+                  ur => ur.UserId,
+                  (u, ur) => new {
+                      u.UserId,
+                      u.Email,
+                      u.FullName,
+                      u.IsActive,
+                      u.CreatedAt,
+                      u.TenantId,
+                      ur.Role
+                  })
             .ToListAsync();
+
+        var users = rawUsers.Select(x => new UserSummaryResponse
+            {
+                UserId    = x.UserId,
+                Email     = x.Email,
+                FullName  = x.FullName ?? string.Empty,
+                Role      = x.Role.ToString(),
+                TenantId  = x.TenantId,
+                IsActive  = x.IsActive,
+                CreatedAt = x.CreatedAt,
+            })
+            .OrderBy(u => u.FullName)
+            .ToList();
 
         return Ok(new ApiResponse<List<UserSummaryResponse>> { Success = true, Data = users });
     }
