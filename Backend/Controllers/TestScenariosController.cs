@@ -95,7 +95,9 @@ public class TestScenariosController : ControllerBase
         try
         {
             // Stage 1 only — evaluation scenarios don't trigger Stage 2 (Rule 3)
-            var result = await _workflow.ExecuteStage1OnlyAsync(physicianId, patientData);
+            // skipPatientCreation: test scenarios are synthetic — no real patient record needed
+            var result = await _workflow.ExecuteStage1OnlyAsync(
+                physicianId, patientData, skipPatientCreation: true);
 
             if (!result.Success || result.Output == null)
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
@@ -346,7 +348,8 @@ public class TestScenariosController : ControllerBase
         try
         {
             // Rule 1 + Rule 12 handled inside ExecuteStage1OnlyAsync
-            var result = await _workflow.ExecuteStage1OnlyAsync(physicianId, patientData);
+            var result = await _workflow.ExecuteStage1OnlyAsync(
+                physicianId, patientData, skipPatientCreation: true);
 
             if (result.Success && result.Output != null)
             {
