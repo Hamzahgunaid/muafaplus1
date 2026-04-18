@@ -260,6 +260,61 @@ public class TenantsController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/v1/tenants/{id}/assistant-links
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Returns all active assistant-physician links for the specified tenant.</summary>
+    [HttpGet("{id:guid}/assistant-links")]
+    [ProducesResponseType(typeof(ApiResponse<List<AssistantLinkResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>),                      StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<List<AssistantLinkResponse>>>> GetAssistantLinks(Guid id)
+    {
+        var tenant = await _tenants.GetTenantAsync(id);
+        if (tenant == null)
+            return NotFound(new ApiResponse<object>
+            {
+                Success   = false,
+                Error     = $"Tenant {id} not found.",
+                ErrorType = "NotFound"
+            });
+
+        var links = await _db.AssistantPhysicianLinks
+            .Where(l => l.TenantId == id && l.IsActive)
+            .OrderByDescending(l => l.LinkedAt)
+            .ToListAsync();
+
+        if (!links.Any())
+            return Ok(new ApiResponse<List<AssistantLinkResponse>> { Success = true, Data = new List<AssistantLinkResponse>() });
+
+        // Collect all user IDs (stored as strings, parsed to Guid for the DB lookup)
+        var guidSet = links
+            .SelectMany(l => new[] { l.AssistantId, l.PhysicianId })
+            .Distinct()
+            .Where(s => Guid.TryParse(s, out _))
+            .Select(Guid.Parse)
+            .ToList();
+
+        var userMap = await _db.Users
+            .Where(u => guidSet.Contains(u.UserId))
+            .Select(u => new { UserId = u.UserId.ToString(), u.FullName })
+            .ToDictionaryAsync(u => u.UserId, u => u.FullName);
+
+        var response = links.Select(l => new AssistantLinkResponse
+        {
+            LinkId        = l.LinkId,
+            AssistantId   = l.AssistantId,
+            AssistantName = userMap.GetValueOrDefault(l.AssistantId, l.AssistantId),
+            PhysicianId   = l.PhysicianId,
+            PhysicianName = userMap.GetValueOrDefault(l.PhysicianId, l.PhysicianId),
+            TenantId      = l.TenantId,
+            IsActive      = l.IsActive,
+            LinkedAt      = l.LinkedAt
+        }).ToList();
+
+        return Ok(new ApiResponse<List<AssistantLinkResponse>> { Success = true, Data = response });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // GET /api/v1/tenants/{id}/users
     // ─────────────────────────────────────────────────────────────────────────
 
