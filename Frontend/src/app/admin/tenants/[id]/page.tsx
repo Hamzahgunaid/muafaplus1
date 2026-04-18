@@ -23,14 +23,14 @@ const ROLE_OPTIONS = [
 ];
 
 const ROLE_LABEL: Record<string, string> = {
-  SuperAdmin:    "مدير عام",
-  HospitalAdmin: "مدير مستشفى",
-  Physician:     "طبيب",
-  Assistant:     "مساعد",
-  "0": "مدير عام",
+  "0": "مدير النظام",
   "1": "مدير مستشفى",
   "2": "طبيب",
   "3": "مساعد",
+  "SuperAdmin":    "مدير النظام",
+  "HospitalAdmin": "مدير مستشفى",
+  "Physician":     "طبيب",
+  "Assistant":     "مساعد",
 };
 
 const EXPIRY_OPTIONS = [
