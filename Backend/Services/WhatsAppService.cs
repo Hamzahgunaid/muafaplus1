@@ -102,6 +102,27 @@ public class WhatsAppService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Staff onboarding text message
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Sends a plain text message to a WhatsApp number.
+    /// Used for staff onboarding notifications.
+    /// </summary>
+    public async Task SendTextMessageAsync(string toPhone, string message)
+    {
+        if (TestMode)
+        {
+            _logger.LogInformation(
+                "WhatsApp TestMode — text message to {Phone}: {Message}",
+                toPhone, message);
+            return;
+        }
+
+        await SendTextAsync(toPhone, message);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // SMS fallback
     // ─────────────────────────────────────────────────────────────────────────
 

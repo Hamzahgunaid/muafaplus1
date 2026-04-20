@@ -370,12 +370,13 @@ export interface UserResponse {
 }
 
 export interface CreateUserRequest {
-  email:      string;
-  fullName:   string;
-  password:   string;
-  role:       string;
-  specialty?: string;
-  tenantId:   string;
+  email:        string;
+  fullName:     string;
+  role:         string;
+  tenantId:     string;
+  phoneNumber?: string;
+  specialty?:   string;
+  institution?: string;
 }
 
 // ── Tenant Settings ───────────────────────────────────────────────────────────

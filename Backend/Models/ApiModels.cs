@@ -558,8 +558,8 @@ public class CreateTenantUserRequest
 {
     [Required] public string  Email       { get; set; } = string.Empty;
     [Required] public string  FullName    { get; set; } = string.Empty;
-    [Required] public string  Password    { get; set; } = string.Empty;
     [Required] public string  Role        { get; set; } = string.Empty;
+    public            string? PhoneNumber { get; set; }
     public            string? Specialty   { get; set; }
     public            string? Institution { get; set; }
 }

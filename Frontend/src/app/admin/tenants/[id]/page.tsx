@@ -33,11 +33,6 @@ const ROLE_LABEL: Record<string, string> = {
   "Assistant":     "مساعد",
 };
 
-const EXPIRY_OPTIONS = [
-  { value: 7,  label: "7 أيام"   },
-  { value: 30, label: "30 يوماً" },
-  { value: 90, label: "90 يوماً" },
-];
 
 const PATIENT_NAME_POLICIES = [
   { value: "phone",    label: "رقم الهاتف فقط"        },
@@ -47,23 +42,12 @@ const PATIENT_NAME_POLICIES = [
 
 // ── Form types ────────────────────────────────────────────────────────────────
 
-interface InviteFormValues {
-  role:          string;
-  expiresInDays: number;
-}
-
-interface GeneratedCode {
-  code:      string;
-  expiresAt: string;
-  role:      string;
-}
-
 interface CreateUserFormValues {
-  email:      string;
-  fullName:   string;
-  password:   string;
-  role:       string;
-  specialty?: string;
+  fullName:    string;
+  email:       string;
+  role:        string;
+  phoneNumber: string;
+  specialty:   string;
 }
 
 interface LinkFormValues {
@@ -119,7 +103,6 @@ export default function TenantDetailPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            <InvitationCodesCard tenantId={tenantId} />
             <SubscriptionCard    tenantId={tenantId} />
             <TenantSettingsCard  tenantId={tenantId} />
             <UsersCard           tenantId={tenantId} />
@@ -131,112 +114,7 @@ export default function TenantDetailPage() {
   );
 }
 
-// ── Invitation Codes Card ─────────────────────────────────────────────────────
 
-function InvitationCodesCard({ tenantId }: { tenantId: string }) {
-  const [generatedCodes, setGeneratedCodes] = useState<GeneratedCode[]>([]);
-  const [submitting,     setSubmitting]     = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
-  const [copied,         setCopied]         = useState<string | null>(null);
-
-  const { register, handleSubmit, formState: { errors } } = useForm<InviteFormValues>({
-    defaultValues: { role: "Physician", expiresInDays: 30 },
-  });
-
-  const onSubmit = async (values: InviteFormValues) => {
-    setError(null);
-    setSubmitting(true);
-    try {
-      const expiresAt = new Date(
-        Date.now() + Number(values.expiresInDays) * 24 * 60 * 60 * 1000
-      ).toISOString();
-      const res = await tenantApi.generateInvitationCode({ role: values.role, tenantId, expiresAt });
-      if (res.success && res.data) {
-        setGeneratedCodes((prev) => [
-          { code: res.data!.code, expiresAt: res.data!.expiresAt, role: values.role },
-          ...prev,
-        ]);
-      } else {
-        setError(res.error ?? "حدث خطأ");
-      }
-    } catch {
-      setError("خطأ في الاتصال");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const copyCode = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(code);
-      setTimeout(() => setCopied(null), 2000);
-    } catch { /* clipboard not available */ }
-  };
-
-  return (
-    <Card title="رموز الدعوة">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <div className="grid grid-cols-2 gap-4">
-          <F label="نوع الدور" req err={errors.role?.message}>
-            <select className={inp(!!errors.role)} {...register("role", { required: "مطلوب" })}>
-              {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </F>
-          <F label="صلاحية الرمز" req err={errors.expiresInDays?.message}>
-            <select
-              className={inp(!!errors.expiresInDays)}
-              {...register("expiresInDays", { required: "مطلوب", valueAsNumber: true })}
-            >
-              {EXPIRY_OPTIONS.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
-            </select>
-          </F>
-        </div>
-
-        {error && (
-          <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-800 transition disabled:opacity-60"
-        >
-          {submitting ? "جارٍ الإنشاء..." : "إنشاء رمز دعوة"}
-        </button>
-      </form>
-
-      {generatedCodes.length > 0 && (
-        <div className="mt-6 space-y-3">
-          <p className="text-xs font-medium text-gray-500">الرموز المنشأة في هذه الجلسة</p>
-          {generatedCodes.map((gc, i) => {
-            const expiry    = new Date(gc.expiresAt).toLocaleDateString("ar-YE", { year: "numeric", month: "short", day: "numeric" });
-            const roleLabel = ROLE_OPTIONS.find((r) => r.value === gc.role)?.label ?? gc.role;
-            return (
-              <div key={i} className="rounded-xl bg-brand-50 border border-brand-100 overflow-hidden">
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <span className="flex-1 font-mono font-bold text-brand-800 text-lg tracking-widest">{gc.code}</span>
-                  <button
-                    type="button"
-                    onClick={() => copyCode(gc.code)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-brand-200 text-brand-700 hover:bg-brand-100 transition"
-                  >
-                    {copied === gc.code ? "✓ تم النسخ" : "نسخ"}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between text-xs text-brand-600 px-4 pb-3">
-                  <span>الدور: {roleLabel}</span>
-                  <span>ينتهي في: {expiry}</span>
-                </div>
-              </div>
-            );
-          })}
-          <p className="text-xs text-gray-400">أرسل هذا الرمز للمستخدم الجديد</p>
-        </div>
-      )}
-    </Card>
-  );
-}
 
 // ── Subscription Card ─────────────────────────────────────────────────────────
 
@@ -407,12 +285,13 @@ function TenantSettingsCard({ tenantId }: { tenantId: string }) {
 // ── Users Card ────────────────────────────────────────────────────────────────
 
 function UsersCard({ tenantId }: { tenantId: string }) {
-  const [users,      setUsers]      = useState<UserResponse[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-  const [showForm,   setShowForm]   = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError,  setFormError]  = useState<string | null>(null);
+  const [users,          setUsers]          = useState<UserResponse[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState<string | null>(null);
+  const [showForm,       setShowForm]       = useState(false);
+  const [submitting,     setSubmitting]     = useState(false);
+  const [formError,      setFormError]      = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateUserFormValues>({
     defaultValues: { role: "Physician" },
@@ -438,19 +317,20 @@ function UsersCard({ tenantId }: { tenantId: string }) {
     setFormError(null);
     setSubmitting(true);
     try {
-      const req: CreateUserRequest = {
-        email:     values.email,
-        fullName:  values.fullName,
-        password:  values.password,
-        role:      values.role,
-        specialty: values.specialty || undefined,
+      const res = await userApi.createUser({
+        fullName:    values.fullName,
+        email:       values.email,
+        role:        values.role,
         tenantId,
-      };
-      const res = await userApi.createUser(req);
+        phoneNumber: values.phoneNumber || undefined,
+        specialty:   values.specialty  || undefined,
+      });
       if (res.success) {
         await fetchUsers();
         setShowForm(false);
         reset();
+        setSuccessMessage("تم إنشاء المستخدم بنجاح. سيتم إرسال بيانات الدخول عبر واتساب إذا تم تحديد رقم الهاتف.");
+        setTimeout(() => setSuccessMessage(null), 5000);
       } else {
         setFormError(res.error ?? "حدث خطأ أثناء الإنشاء");
       }
@@ -523,15 +403,12 @@ function UsersCard({ tenantId }: { tenantId: string }) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <F label="كلمة المرور المؤقتة" req err={errors.password?.message}>
+            <F label="رقم الهاتف (واتساب)" err={errors.phoneNumber?.message}>
               <input
-                type="text"
-                className={inp(!!errors.password)}
-                placeholder="MuafaPlus2025!"
-                {...register("password", {
-                  required:  "مطلوب",
-                  minLength: { value: 8, message: "8 أحرف على الأقل" },
-                })}
+                type="tel"
+                placeholder="+967XXXXXXXXX"
+                className={inp(!!errors.phoneNumber)}
+                {...register("phoneNumber")}
               />
             </F>
             <F label="الدور" req err={errors.role?.message}>
@@ -572,6 +449,10 @@ function UsersCard({ tenantId }: { tenantId: string }) {
             </button>
           </div>
         </form>
+      )}
+
+      {successMessage && (
+        <p className="text-sm text-green-600 py-2">{successMessage}</p>
       )}
 
       {!showForm && (
