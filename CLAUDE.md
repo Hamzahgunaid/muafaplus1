@@ -69,6 +69,9 @@ Chat: ChatThreads, ChatMessages
 - GenerationSessions.PatientId made nullable (ALTER TABLE)
 - FK_GenerationSessions_Patients_PatientId dropped
 - FK_GenerationSessions_Physicians_PhysicianId dropped
+- TenantSettings.WhatsAppEnabled added: boolean NOT NULL DEFAULT false
+- Referrals.ChatEnabled added: boolean NOT NULL DEFAULT true
+- Users.ChatEnabled added: boolean NOT NULL DEFAULT true
 
 ### Test Data (Production Railway)
 Tenant: Sana'a General Hospital
@@ -258,8 +261,14 @@ All keys cleared on logout.
 - GetTenantUsers fixed — returns TenantRole enum name not AppUser.Role string
 - GenerationSessions FK constraints dropped (Patients + Physicians)
 
-## Pending — Phase 3
-- [ ] Physician-patient chat UI (ChatCard completion in referrals/[id])
+### Phase 3 — Physician-Patient Chat (Complete)
+- Physician-patient async chat working end to end with disclaimer
+- ChatEnabled wired from Referral entity into ReferralResponse
+- WhatsAppEnabled boolean added to TenantSettings (admin toggle persists)
+- Physician.ChatEnabled gate removed — chat gated by TenantSettings.ChatEnabled only
+- Admin settings toggle saves correctly (whatsAppEnabled ?? false guard added)
+
+## Pending — Phase 3 Remaining
 - [ ] Streaming SSE frontend for test-scenarios/new page
 - [ ] Read progress tracking display on referral detail
 - [ ] Push notifications via Firebase (low priority)
