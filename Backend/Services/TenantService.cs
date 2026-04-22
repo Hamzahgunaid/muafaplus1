@@ -158,6 +158,9 @@ public class TenantService
         if (request.NotificationDelayHours.HasValue)
             settings.NotificationDelayHours = request.NotificationDelayHours.Value;
 
+        if (request.WhatsAppEnabled.HasValue)
+            settings.WhatsAppEnabled = request.WhatsAppEnabled.Value;
+
         if (request.ChatEnabled.HasValue)
             settings.ChatEnabled = request.ChatEnabled.Value;
 
@@ -282,6 +285,7 @@ public class TenantService
     {
         PatientNamePolicy      = s.PatientNamePolicy.ToString(),
         WhatsAppSenderId       = s.WhatsAppSenderId,
+        WhatsAppEnabled        = s.WhatsAppEnabled,
         NotificationDelayHours = s.NotificationDelayHours,
         ChatEnabled            = s.ChatEnabled,
         PatientChatWindowDays  = s.PatientChatWindowDays

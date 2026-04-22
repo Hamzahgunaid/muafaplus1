@@ -224,6 +224,7 @@ public class TenantSettingsResponse
 {
     public string  PatientNamePolicy      { get; set; } = string.Empty;
     public string? WhatsAppSenderId       { get; set; }
+    public bool    WhatsAppEnabled        { get; set; }
     public int     NotificationDelayHours { get; set; }
     public bool    ChatEnabled            { get; set; }
     public int     PatientChatWindowDays  { get; set; }
@@ -261,6 +262,7 @@ public class UpdateTenantSettingsRequest
     /// <summary>Accepted values: "Hide", "ShowOptional", "Require". Null = no change.</summary>
     public string? PatientNamePolicy      { get; set; }
     public string? WhatsAppSenderId       { get; set; }
+    public bool?   WhatsAppEnabled        { get; set; }
     public int?    NotificationDelayHours { get; set; }
     public bool?   ChatEnabled            { get; set; }
     public int?    PatientChatWindowDays  { get; set; }
