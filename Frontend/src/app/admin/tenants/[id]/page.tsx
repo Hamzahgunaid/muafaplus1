@@ -182,7 +182,7 @@ function TenantSettingsCard({ tenantId }: { tenantId: string }) {
 
   useEffect(() => {
     tenantSettingsApi.getSettings(tenantId)
-      .then((res) => { if (res.success && res.data) setSettings(res.data); else setError(res.error ?? "تعذر التحميل"); })
+      .then((res) => { if (res.success && res.data) setSettings({ ...res.data, whatsAppEnabled: res.data.whatsAppEnabled ?? false }); else setError(res.error ?? "تعذر التحميل"); })
       .catch(() => setError("خطأ في الاتصال"))
       .finally(() => setLoading(false));
   }, [tenantId]);
