@@ -376,6 +376,10 @@ Message 2: 4-digit access code (sent separately, 2 second delay)
 Never combine code and content in the same message.
 TestMode uses hello_world template. Production uses text messages.
 
+RULE 15 — Make surgical changes only
+Modify exactly what the brief specifies, nothing adjacent, no refactoring,
+no reformatting, no additional improvements unless explicitly requested.
+
 ## Environment variables on Railway (production)
 ConnectionStrings__DefaultConnection — PostgreSQL connection string
 Anthropic__ApiKey — Claude API key (sk-ant-...)
