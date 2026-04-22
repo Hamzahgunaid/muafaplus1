@@ -3,6 +3,7 @@ import type {
   ApiResponse, LoginRequest, LoginResponse, ChangePasswordRequest, PatientData,
   PhysicianProfile, SessionSummary, SessionDetail, SessionStatus, WorkflowResult,
   CreateReferralRequest, ReferralResponse, ReferralEngagementResponse, ReferralArticleResponse,
+  ArticleEngagementResponse, FullEngagementResponse,
   CreateTestScenarioRequest, TestScenarioResponse, SubmitEvaluationRequest, ContentEvaluationResponse,
   ChatThreadResponse, ChatMessageResponse,
   TenantResponse, TenantSubscriptionSummary, CreateTenantRequest, GenerateInvitationCodeRequest,
@@ -146,6 +147,11 @@ export const referralApi = {
 
   getEngagement: async (id: string): Promise<ApiResponse<ReferralEngagementResponse>> => {
     const { data } = await http.get<ApiResponse<ReferralEngagementResponse>>(`/referrals/${id}/engagement`);
+    return data;
+  },
+
+  getFullEngagement: async (id: string): Promise<ApiResponse<FullEngagementResponse>> => {
+    const { data } = await http.get<ApiResponse<FullEngagementResponse>>(`/referrals/${id}/engagement`);
     return data;
   },
 

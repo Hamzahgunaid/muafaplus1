@@ -11,6 +11,7 @@ import type {
   ReferralEngagementResponse,
   ReferralArticleResponse,
   ChatThreadResponse,
+  ArticleEngagementResponse,
 } from "@/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -37,9 +38,10 @@ export default function ReferralDetailPage() {
   const referralId    = params.id as string;
   const { isLoggedIn } = useAuthStore();
 
-  const [referral,    setReferral]    = useState<ReferralResponse | null>(null);
-  const [engagement,  setEngagement]  = useState<ReferralEngagementResponse | null>(null);
-  const [articles,    setArticles]    = useState<ReferralArticleResponse[]>([]);
+  const [referral,         setReferral]         = useState<ReferralResponse | null>(null);
+  const [engagement,       setEngagement]       = useState<ReferralEngagementResponse | null>(null);
+  const [articles,         setArticles]         = useState<ReferralArticleResponse[]>([]);
+  const [articleEngagement, setArticleEngagement] = useState<ArticleEngagementResponse[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
 
@@ -66,6 +68,10 @@ export default function ReferralDetailPage() {
       }
       if (engRes.success && engRes.data) {
         setEngagement(engRes.data);
+      }
+      const fullEngRes = await referralApi.getFullEngagement(referralId);
+      if (fullEngRes.success && fullEngRes.data) {
+        setArticleEngagement(fullEngRes.data.articles ?? []);
       }
     } catch {
       setError("خطأ في الاتصال بالخادم");
@@ -113,6 +119,7 @@ export default function ReferralDetailPage() {
           <div className="space-y-4">
             <InfoCard referral={referral} />
             <TimelineCard referral={referral} engagement={engagement} />
+            <ArticleEngagementCard articles={articleEngagement} />
             {articles.length > 0 && (
               <Card title="المحتوى المولّد">
                 <ArticleContentViewer
@@ -489,6 +496,48 @@ function Card({
 function Spin() {
   return (
     <span className="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin flex-shrink-0" />
+  );
+}
+
+function ArticleEngagementCard({ articles }: { articles: ArticleEngagementResponse[] }) {
+  if (!articles || articles.length === 0) return null;
+
+  const depthLabel = (a: ArticleEngagementResponse) => {
+    if (a.completedAt) return { label: "مكتمل", pct: 100, color: "bg-green-500" };
+    if (a.depth75At)   return { label: "75%",   pct: 75,  color: "bg-blue-500" };
+    if (a.depth50At)   return { label: "50%",   pct: 50,  color: "bg-yellow-500" };
+    if (a.depth25At)   return { label: "25%",   pct: 25,  color: "bg-orange-400" };
+    if (a.openedAt)    return { label: "فُتح",  pct: 5,   color: "bg-gray-400" };
+    return               { label: "لم يُقرأ",   pct: 0,   color: "bg-gray-200" };
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-4">
+      <h2 className="text-right text-lg font-semibold text-gray-800 mb-4">
+        تفاعل المريض مع المقالات
+      </h2>
+      <div className="space-y-3">
+        {articles.map((a, i) => {
+          const { label, pct, color } = depthLabel(a);
+          return (
+            <div key={a.articleId ?? i} className="flex items-center gap-3">
+              <span className="text-xs font-medium text-gray-500 w-12 text-left">{label}</span>
+              <div className="flex-1 bg-gray-100 rounded-full h-2">
+                <div
+                  className={`${color} h-2 rounded-full transition-all`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-sm text-gray-700 text-right flex-1 truncate">
+                {a.articleTitle ?? `مقال ${i + 1}`}
+              </span>
+              {a.reaction === "Like"    && <span className="text-green-500">👍</span>}
+              {a.reaction === "Dislike" && <span className="text-red-500">👎</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
