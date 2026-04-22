@@ -14,6 +14,7 @@ public class TenantSettings
     public PatientNamePolicy PatientNamePolicy    { get; set; } = PatientNamePolicy.ShowOptional;
     public string?           WhatsAppSenderId     { get; set; }   // null = use platform default
     public int               NotificationDelayHours { get; set; } = 2;
+    public bool              WhatsAppEnabled      { get; set; } = false;
     public bool              ChatEnabled          { get; set; } = false;
     public int               PatientChatWindowDays { get; set; } = 7;
 
