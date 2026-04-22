@@ -336,7 +336,7 @@ public class ReferralsController : ControllerBase
         var (referral, accessError) = await LoadAndVerifyReferralAccessAsync(id);
         if (accessError != null) return accessError!;
 
-        // ── Dual chat gate: tenant AND physician must both have chat enabled ──
+        // ── Chat gate: tenant must have chat enabled ──────────────────────────
         var settings = await _db.TenantSettings
             .FirstOrDefaultAsync(s => s.TenantId == referral!.TenantId);
 
@@ -346,17 +346,6 @@ public class ReferralsController : ControllerBase
                 Success   = false,
                 Error     = "Chat is not enabled for this institution.",
                 ErrorType = "ChatDisabled"
-            });
-
-        var physician = await _db.Physicians
-            .FirstOrDefaultAsync(p => p.PhysicianId == referral!.PhysicianId);
-
-        if (physician == null || !physician.ChatEnabled)
-            return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<object>
-            {
-                Success   = false,
-                Error     = "Chat has not been enabled by the physician for this referral.",
-                ErrorType = "ChatDisabledByPhysician"
             });
 
         // ── Find or create thread ─────────────────────────────────────────────
