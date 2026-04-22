@@ -29,7 +29,7 @@ Claude (Architect) → Hamzah (Coordinator) → Claude Code (Implementer)
 - Hamzah pastes briefs into Claude Code
 - Claude Code output returned to Claude for review before proceeding
 
-## 13 Rules for Claude Code
+## 14 Rules for Claude Code
 1. Never modify files not explicitly listed in the brief
 2. Never change existing working functionality
 3. Always use object initializers — ApiResponse<T>.Fail() and .Success() do not exist
@@ -43,6 +43,7 @@ Claude (Architect) → Hamzah (Coordinator) → Claude Code (Implementer)
 11. appsettings.Development.json excluded from git permanently
 12. All schema changes applied manually via Railway SQL — EF Core migrations are NOT used in production
 13. ArticleOutline fields are snake_case with [JsonPropertyName] — title_ar, title_en, key_topics
+14. Make surgical changes only — modify exactly what the brief specifies, nothing adjacent, no refactoring, no reformatting, no additional improvements unless explicitly requested
 
 ## Database — PostgreSQL on Railway
 ### Tables (18 total)
