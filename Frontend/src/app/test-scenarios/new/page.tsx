@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
 import { testScenarioApi } from "@/services/api";
 import NavBar from "@/components/NavBar";
-import type { AgeGroup, TestScenarioResponse, Stage1Output } from "@/types";
+import ArticleContentViewer from "@/components/ArticleContentViewer";
+import type { AgeGroup, TestScenarioResponse, Stage1Output, CreateTestScenarioRequest } from "@/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,10 +46,13 @@ const RISK_LABEL: Record<string, string> = {
 export default function NewTestScenarioPage() {
   const router = useRouter();
   const { isLoggedIn } = useAuthStore();
-  const [submitting, setSubmitting] = useState(false);
-  const [apiError,   setApiError]   = useState<string | null>(null);
-  const [success,    setSuccess]    = useState<TestScenarioResponse | null>(null);
-  const [expanded,   setExpanded]   = useState(false);
+  const [submitting,    setSubmitting]    = useState(false);
+  const [apiError,      setApiError]      = useState<string | null>(null);
+  const [success,       setSuccess]       = useState<TestScenarioResponse | null>(null);
+  const [expanded,      setExpanded]      = useState(false);
+  const [streaming,     setStreaming]     = useState(false);
+  const [streamResult,  setStreamResult]  = useState<Stage1Output | null>(null);
+  const [streamError,   setStreamError]   = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) { router.push("/login"); }
@@ -80,6 +84,71 @@ export default function NewTestScenarioPage() {
       setApiError(e instanceof Error ? e.message : "خطأ في الاتصال");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleStream = async (values: FormValues) => {
+    setStreaming(true);
+    setStreamResult(null);
+    setStreamError(null);
+
+    const formData: CreateTestScenarioRequest = {
+      primaryDiagnosis:    values.primaryDiagnosis,
+      ageGroup:            values.ageGroup,
+      comorbidities:       values.comorbidities       || undefined,
+      currentMedications:  values.currentMedications  || undefined,
+      allergies:           values.allergies            || undefined,
+      medicalRestrictions: values.medicalRestrictions  || undefined,
+    };
+
+    try {
+      const token = localStorage.getItem("muafa_token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/test-scenarios/generate/stream`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":  "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      if (!response.ok) {
+        setStreamError("فشل الاتصال بالخادم");
+        return;
+      }
+
+      const reader  = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer    = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const raw = line.slice(5).trim();
+          if (raw === "[DONE]") { reader.cancel(); return; }
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.error) { setStreamError(parsed.error); return; }
+            setStreamResult(parsed as Stage1Output);
+          } catch {
+            // incomplete chunk — wait for next read
+          }
+        }
+      }
+    } catch {
+      setStreamError("خطأ في الاتصال");
+    } finally {
+      setStreaming(false);
     }
   };
 
@@ -272,13 +341,31 @@ export default function NewTestScenarioPage() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3.5 rounded-xl bg-brand-600 text-white font-semibold text-sm hover:bg-brand-800 transition disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {submitting ? <><Spin /> جارٍ التوليد...</> : "توليد المحتوى للتقييم"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={submitting || streaming}
+                className="flex-1 py-3.5 rounded-xl bg-brand-600 text-white font-semibold text-sm hover:bg-brand-800 transition disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {submitting ? <><Spin /> جارٍ التوليد...</> : "توليد المحتوى للتقييم"}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit(handleStream)}
+                disabled={streaming || submitting}
+                className="px-4 py-2 rounded-xl bg-[#355BA7] text-white text-sm font-medium hover:bg-[#283481] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              >
+                {streaming ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    جارٍ التوليد...
+                  </span>
+                ) : "معاينة سريعة"}
+              </button>
+            </div>
 
             {submitting && (
               <p className="text-center text-xs text-gray-400">
@@ -287,6 +374,27 @@ export default function NewTestScenarioPage() {
             )}
           </form>
         </div>
+
+        {streamError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-right text-red-700 text-sm mt-4">
+            {streamError}
+          </div>
+        )}
+
+        {streamResult && !streaming && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-4">
+            <h2 className="text-right text-lg font-semibold text-[#283481] mb-4">
+              نتيجة المعاينة السريعة
+            </h2>
+            <ArticleContentViewer
+              riskLevel={streamResult.risk_assessment?.risk_level ?? null}
+              summaryArticle={streamResult.summary_article ?? null}
+              articleOutlines={streamResult.article_outlines ?? []}
+              mode="test-scenario"
+            />
+          </div>
+        )}
+
       </main>
     </div>
   );
