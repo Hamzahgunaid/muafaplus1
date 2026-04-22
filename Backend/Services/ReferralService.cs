@@ -330,8 +330,7 @@ public class ReferralService
         return referral == null
             ? null
             : MapToResponse(referral, referral.PatientAccess?.PhoneNumber ?? string.Empty,
-                            referral.Engagement,
-                            referral.ChatThread?.IsEnabled ?? false);
+                            referral.Engagement);
     }
 
     public async Task<(bool success, string? error)> SubmitFeedbackAsync(
@@ -624,8 +623,7 @@ public class ReferralService
     private static ReferralResponse MapToResponse(
         Referral            referral,
         string              phone,
-        ReferralEngagement? engagement,
-        bool                chatEnabled = false)
+        ReferralEngagement? engagement)
     {
         return new ReferralResponse
         {
@@ -638,7 +636,7 @@ public class ReferralService
             DeliveredAt         = referral.DeliveredAt,
             CreatedAt           = referral.CreatedAt,
             SessionId           = referral.SessionId,
-            ChatEnabled         = chatEnabled,
+            ChatEnabled         = referral.ChatEnabled,
             Engagement          = engagement == null ? null : new ReferralEngagementResponse
             {
                 MessageSentAt       = engagement.MessageSentAt,

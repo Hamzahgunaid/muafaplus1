@@ -42,6 +42,7 @@ public class Referral
     public string? RiskLevel { get; set; }
 
     public bool      WhatsAppDelivery    { get; set; } = true;
+    public bool      ChatEnabled         { get; set; } = true;
     public DateTime? ScheduledDeliveryAt { get; set; }
     public DateTime? DeliveredAt         { get; set; }
     public DateTime  CreatedAt           { get; set; } = DateTime.UtcNow;
