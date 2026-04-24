@@ -9,7 +9,6 @@ import '../providers/auth_provider.dart';
 
 class PatientLoginScreen extends ConsumerStatefulWidget {
   const PatientLoginScreen({super.key});
-
   @override
   ConsumerState<PatientLoginScreen> createState() => _PatientLoginScreenState();
 }
@@ -18,15 +17,12 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
   final _phoneController = TextEditingController();
   final _otpControllers  = List.generate(4, (_) => TextEditingController());
   final _otpFocusNodes   = List.generate(4, (_) => FocusNode());
-  final _phoneFocus      = FocusNode();
-  bool _phoneEntered     = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _phoneFocus.dispose();
     for (final c in _otpControllers) c.dispose();
-    for (final f in _otpFocusNodes) f.dispose();
+    for (final f in _otpFocusNodes)  f.dispose();
     super.dispose();
   }
 
@@ -36,7 +32,6 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
     final phone = _phoneController.text.trim();
     final code  = _fullCode;
     if (phone.isEmpty || code.length != 4) return;
-
     final success = await ref.read(authProvider.notifier).login(phone, code);
     if (success && mounted) context.go('/home');
   }
@@ -64,7 +59,8 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
         backgroundColor: AppColors.navy800,
         body: Column(
           children: [
-            // ── Navy hero top 45% ──────────────────────────────────────────────
+
+            // ── Navy hero — top 45% ──
             Expanded(
               flex: 45,
               child: Container(
@@ -86,39 +82,26 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                            horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
                             color: AppColors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(
-                            'معافى+',
+                          child: Text('معافى+',
                             style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.navy600,
-                            ),
-                          ),
+                              fontSize: 20, fontWeight: FontWeight.w700,
+                              color: AppColors.navy600)),
                         ),
                         const SizedBox(height: 24),
-                        Text(
-                          AppStrings.loginTitle,
+                        Text(AppStrings.loginTitle,
                           style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.white,
-                            height: 1.3,
-                          ),
-                        ),
+                            fontSize: 26, fontWeight: FontWeight.w700,
+                            color: AppColors.white, height: 1.3)),
                         const SizedBox(height: 10),
-                        Text(
-                          AppStrings.loginSubtitle,
+                        Text(AppStrings.loginSubtitle,
                           style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 14,
-                            color: AppColors.white.withOpacity(0.65),
-                            height: 1.6,
-                          ),
-                        ),
+                            fontSize: 14, height: 1.6,
+                            color: AppColors.white.withOpacity(0.65))),
                       ],
                     ),
                   ),
@@ -126,88 +109,75 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
               ),
             ),
 
-            // ── White sheet bottom 55% ─────────────────────────────────────────
+            // ── White sheet — bottom 55% ──
             Expanded(
               flex: 55,
               child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: AppColors.ink50,
-                  borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(24)),
                 ),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+
                       // Phone field
-                      Text(
-                        AppStrings.phoneLabel,
+                      Text(AppStrings.phoneLabel,
                         style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink700,
-                        ),
-                      ),
+                          fontSize: 13, fontWeight: FontWeight.w600,
+                          color: AppColors.ink700)),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _phoneController,
-                        focusNode: _phoneFocus,
                         keyboardType: TextInputType.phone,
                         textDirection: TextDirection.ltr,
-                        onChanged: (v) =>
-                            setState(() => _phoneEntered = v.trim().isNotEmpty),
+                        onChanged: (_) => setState(() {}),
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15, color: AppColors.ink900),
                         decoration: InputDecoration(
                           hintText: AppStrings.phoneHint,
                           hintStyle: GoogleFonts.ibmPlexSansArabic(
-                              color: AppColors.ink400, fontSize: 14),
+                            color: AppColors.ink400),
                           filled: true,
                           fillColor: AppColors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
-                                color: AppColors.ink100, width: 1),
-                          ),
+                              color: AppColors.ink100)),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
-                                color: AppColors.ink100, width: 1),
-                          ),
+                              color: AppColors.ink100)),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
-                                color: AppColors.navy600, width: 1.5),
-                          ),
+                              color: AppColors.navy600, width: 1.5)),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
+                            horizontal: 16, vertical: 14),
                         ),
                       ),
 
                       const SizedBox(height: 24),
 
                       // OTP label
-                      Text(
-                        AppStrings.codeLabel,
+                      Text(AppStrings.codeLabel,
                         style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink700,
-                        ),
-                      ),
+                          fontSize: 13, fontWeight: FontWeight.w600,
+                          color: AppColors.ink700)),
                       const SizedBox(height: 8),
 
                       // 4-box OTP row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(
-                          4,
-                          (i) => _OtpBox(
-                            controller: _otpControllers[i],
-                            focusNode: _otpFocusNodes[i],
-                            onChanged: (v) => _onOtpChanged(v, i),
-                          ),
-                        ),
+                        children: List.generate(4, (i) => _OtpBox(
+                          controller: _otpControllers[i],
+                          focusNode: _otpFocusNodes[i],
+                          onChanged: (v) => _onOtpChanged(v, i),
+                        )),
                       ),
 
                       // Error banner
@@ -221,14 +191,10 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
                             border: Border.all(
                               color: AppColors.riskCritText.withOpacity(0.3)),
                           ),
-                          child: Text(
-                            AppStrings.loginError,
+                          child: Text(AppStrings.loginError,
                             style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 13,
-                              color: AppColors.riskCritText,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                              fontSize: 13, color: AppColors.riskCritText),
+                            textAlign: TextAlign.center),
                         ),
                       ],
 
@@ -247,32 +213,22 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
                             elevation: 0,
                           ),
                           child: isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
-                                )
-                              : Text(
-                                  AppStrings.loginButton,
-                                  style: GoogleFonts.ibmPlexSansArabic(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700),
-                                ),
+                            ? const SizedBox(width: 20, height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                            : Text(AppStrings.loginButton,
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700)),
                         ),
                       ),
 
                       const SizedBox(height: 20),
 
-                      Text(
-                        AppStrings.disclaimer,
+                      Text(AppStrings.disclaimer,
                         style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 11,
-                          color: AppColors.ink400,
-                          height: 1.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                          fontSize: 11, color: AppColors.ink400, height: 1.5),
+                        textAlign: TextAlign.center),
                     ],
                   ),
                 ),
@@ -299,8 +255,7 @@ class _OtpBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 64,
-      height: 64,
+      width: 64, height: 64,
       child: TextFormField(
         controller: controller,
         focusNode: focusNode,
@@ -310,27 +265,22 @@ class _OtpBox extends StatelessWidget {
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         onChanged: onChanged,
         style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          color: AppColors.navy600,
-        ),
+          fontSize: 24, fontWeight: FontWeight.w700,
+          color: AppColors.navy600),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
           fillColor: AppColors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.ink100),
-          ),
+            borderSide: const BorderSide(color: AppColors.ink100)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.ink100),
-          ),
+            borderSide: const BorderSide(color: AppColors.ink100)),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: AppColors.navy600, width: 2),
-          ),
+            borderSide: const BorderSide(
+              color: AppColors.navy600, width: 2)),
           contentPadding: EdgeInsets.zero,
         ),
       ),

@@ -13,25 +13,14 @@ class FeedbackScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.ink50,
         appBar: AppBar(
-          backgroundColor: AppColors.navy700,
+          backgroundColor: AppColors.navy600,
           foregroundColor: AppColors.white,
-          title: Text(
-            'التقييم',
+          title: Text('التقييم',
             style: GoogleFonts.ibmPlexSansArabic(
-              fontWeight: FontWeight.w600,
-              color: AppColors.white,
-            ),
-          ),
+              fontWeight: FontWeight.w700, color: AppColors.white)),
         ),
-        body: Center(
-          child: Text(
-            'قريباً',
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 18,
-              color: AppColors.ink400,
-            ),
-          ),
-        ),
+        body: const Center(child: CircularProgressIndicator(
+          color: AppColors.navy600)),
       ),
     );
   }

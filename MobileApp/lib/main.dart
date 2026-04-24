@@ -7,11 +7,7 @@ import 'core/router/app_router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
-
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const ProviderScope(child: MuafaPlusApp()));
 }
 
@@ -21,17 +17,13 @@ class MuafaPlusApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-
     return MaterialApp.router(
       title: 'معافى+',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar'), Locale('en')],
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'NotoSansArabic',
-      ),
+      theme: ThemeData(useMaterial3: true),
     );
   }
 }

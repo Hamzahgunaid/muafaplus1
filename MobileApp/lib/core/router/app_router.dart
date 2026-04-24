@@ -9,38 +9,29 @@ import '../../features/patient/feedback/screens/feedback_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
-
   return GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
-      final isAuthenticated = authState.status == AuthStatus.authenticated;
-      final isLoginRoute = state.matchedLocation == '/login';
-
-      if (isAuthenticated && isLoginRoute) return '/home';
-      if (!isAuthenticated && !isLoginRoute) return '/login';
+      final isAuth  = authState.status == AuthStatus.authenticated;
+      final isLogin = state.matchedLocation == '/login';
+      if (isAuth && isLogin) return '/home';
+      if (!isAuth && !isLogin) return '/login';
       return null;
     },
     routes: [
-      GoRoute(path: '/login',   builder: (_, __) => const PatientLoginScreen()),
-      GoRoute(path: '/home',    builder: (_, __) => const PatientHomeScreen()),
-      GoRoute(
-        path: '/referral/:id',
+      GoRoute(path: '/login',
+        builder: (_, __) => const PatientLoginScreen()),
+      GoRoute(path: '/home',
+        builder: (_, __) => const PatientHomeScreen()),
+      GoRoute(path: '/referral/:id',
         builder: (_, state) => ReferralDetailScreen(
-          referralId: state.pathParameters['id']!,
-        ),
-      ),
-      GoRoute(
-        path: '/article/:id',
+          referralId: state.pathParameters['id']!)),
+      GoRoute(path: '/article/:id',
         builder: (_, state) => ArticleReaderScreen(
-          articleId: state.pathParameters['id']!,
-        ),
-      ),
-      GoRoute(
-        path: '/feedback/:id',
+          articleId: state.pathParameters['id']!)),
+      GoRoute(path: '/feedback/:id',
         builder: (_, state) => FeedbackScreen(
-          referralId: state.pathParameters['id']!,
-        ),
-      ),
+          referralId: state.pathParameters['id']!)),
     ],
   );
 });
