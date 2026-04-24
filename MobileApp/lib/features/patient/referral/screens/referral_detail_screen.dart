@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/dio_client.dart';
 
 // ── Models ──────────────────────────────────────────────────────────────────
 
@@ -142,8 +141,18 @@ class _ReferralDetailScreenState
   Future<void> _triggerStage2() async {
     setState(() => _triggeringStage2 = true);
     try {
-      final dio = ref.read(dioClientProvider).dio;
-      await dio.post(ApiConstants.referralStage2(widget.referralId));
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('patient_token') ?? '';
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ));
+      await dio.post('/referrals/${widget.referralId}/stage2');
       ref.invalidate(referralDetailProvider(widget.referralId));
     } catch (e) {
       if (mounted) {
