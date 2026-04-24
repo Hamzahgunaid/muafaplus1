@@ -1,9 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
 
 // ── Models ──────────────────────────────────────────────────────────────────
@@ -70,8 +71,20 @@ class ReferralDetail {
 
 final referralDetailProvider = FutureProvider.family<ReferralDetail, String>(
   (ref, id) async {
-    final dio = ref.watch(dioClientProvider).dio;
-    final response = await dio.get('${ApiConstants.referrals}/$id');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('patient_token') ?? '';
+
+    final dio = Dio(BaseOptions(
+      baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ));
+
+    final response = await dio.get('/referrals/$id');
     return ReferralDetail.fromJson(response.data['data']);
   },
 );
