@@ -1,13 +1,8 @@
 class PatientLoginRequest {
   final String phoneNumber;
   final String code;
-
   PatientLoginRequest({required this.phoneNumber, required this.code});
-
-  Map<String, dynamic> toJson() => {
-    'phoneNumber': phoneNumber,
-    'code': code,
-  };
+  Map<String, dynamic> toJson() => {'phoneNumber': phoneNumber, 'code': code};
 }
 
 class PatientLoginResponse {

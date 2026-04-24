@@ -15,7 +15,6 @@ class DioClient {
       receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
-
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final prefs = await SharedPreferences.getInstance();
@@ -24,9 +23,6 @@ class DioClient {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
-      },
-      onError: (error, handler) {
-        handler.next(error);
       },
     ));
   }

@@ -16,289 +16,322 @@ class PatientLoginScreen extends ConsumerStatefulWidget {
 
 class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
   final _phoneController = TextEditingController();
-  final _codeController  = TextEditingController();
-  final _formKey         = GlobalKey<FormState>();
+  final _otpControllers  = List.generate(4, (_) => TextEditingController());
+  final _otpFocusNodes   = List.generate(4, (_) => FocusNode());
+  final _phoneFocus      = FocusNode();
+  bool _phoneEntered     = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _codeController.dispose();
+    _phoneFocus.dispose();
+    for (final c in _otpControllers) c.dispose();
+    for (final f in _otpFocusNodes) f.dispose();
     super.dispose();
   }
 
+  String get _fullCode => _otpControllers.map((c) => c.text).join();
+
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+    final phone = _phoneController.text.trim();
+    final code  = _fullCode;
+    if (phone.isEmpty || code.length != 4) return;
 
-    final success = await ref.read(authProvider.notifier).login(
-      _phoneController.text.trim(),
-      _codeController.text.trim(),
-    );
+    final success = await ref.read(authProvider.notifier).login(phone, code);
+    if (success && mounted) context.go('/home');
+  }
 
-    if (success && mounted) {
-      context.go('/home');
+  void _onOtpChanged(String value, int index) {
+    if (value.length == 1 && index < 3) {
+      _otpFocusNodes[index + 1].requestFocus();
     }
+    if (value.isEmpty && index > 0) {
+      _otpFocusNodes[index - 1].requestFocus();
+    }
+    if (_fullCode.length == 4) _handleLogin();
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
+    final hasError  = authState.status == AuthStatus.error;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppColors.deepNavy,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                const SizedBox(height: 60),
-
-                // Logo
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.skyBlue.withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'م+',
-                      style: GoogleFonts.notoSansArabic(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.skyBlue,
-                      ),
-                    ),
+        backgroundColor: AppColors.navy800,
+        body: Column(
+          children: [
+            // ── Navy hero top 45% ──────────────────────────────────────────────
+            Expanded(
+              flex: 45,
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.navy800, AppColors.navy600],
                   ),
                 ),
-
-                const SizedBox(height: 24),
-
-                Text(
-                  AppStrings.loginTitle,
-                  style: GoogleFonts.notoSansArabic(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  AppStrings.loginSubtitle,
-                  style: GoogleFonts.notoSansArabic(
-                    fontSize: 14,
-                    color: AppColors.white.withOpacity(0.6),
-                    height: 1.6,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 48),
-
-                // Form card
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Form(
-                    key: _formKey,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-
-                        // Phone field
-                        Text(
-                          AppStrings.phoneLabel,
-                          style: GoogleFonts.notoSansArabic(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textDark,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'معافى+',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.navy600,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          textDirection: TextDirection.ltr,
-                          decoration: InputDecoration(
-                            hintText: AppStrings.phoneHint,
-                            hintStyle: TextStyle(color: AppColors.textMedium),
-                            filled: true,
-                            fillColor: AppColors.lightGrey,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: AppColors.royalBlue,
-                                width: 1.5,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14,
-                            ),
-                          ),
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return AppStrings.phoneError;
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Code field
-                        Text(
-                          AppStrings.codeLabel,
-                          style: GoogleFonts.notoSansArabic(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _codeController,
-                          keyboardType: TextInputType.number,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.center,
-                          maxLength: 4,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 12,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: AppStrings.codeHint,
-                            hintStyle: TextStyle(
-                              color: AppColors.textMedium,
-                              letterSpacing: 8,
-                            ),
-                            counterText: '',
-                            filled: true,
-                            fillColor: AppColors.lightGrey,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: AppColors.royalBlue,
-                                width: 1.5,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14,
-                            ),
-                          ),
-                          validator: (val) {
-                            if (val == null || val.length != 4) {
-                              return AppStrings.codeError;
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Error banner
-                        if (authState.status == AuthStatus.error)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.shade200),
-                            ),
-                            child: Text(
-                              AppStrings.loginError,
-                              style: GoogleFonts.notoSansArabic(
-                                fontSize: 13,
-                                color: Colors.red.shade700,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-
                         const SizedBox(height: 24),
-
-                        // Login button
-                        SizedBox(
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.deepNavy,
-                              foregroundColor: AppColors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: isLoading
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : Text(
-                                    AppStrings.loginButton,
-                                    style: GoogleFonts.notoSansArabic(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                        Text(
+                          AppStrings.loginTitle,
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.white,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          AppStrings.loginSubtitle,
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 14,
+                            color: AppColors.white.withOpacity(0.65),
+                            height: 1.6,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 32),
-
-                Text(
-                  'معافى+ · أفية وايز للحلول الرقمية',
-                  style: GoogleFonts.notoSansArabic(
-                    fontSize: 12,
-                    color: AppColors.white.withOpacity(0.4),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
+
+            // ── White sheet bottom 55% ─────────────────────────────────────────
+            Expanded(
+              flex: 55,
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: AppColors.ink50,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Phone field
+                      Text(
+                        AppStrings.phoneLabel,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _phoneController,
+                        focusNode: _phoneFocus,
+                        keyboardType: TextInputType.phone,
+                        textDirection: TextDirection.ltr,
+                        onChanged: (v) =>
+                            setState(() => _phoneEntered = v.trim().isNotEmpty),
+                        decoration: InputDecoration(
+                          hintText: AppStrings.phoneHint,
+                          hintStyle: GoogleFonts.ibmPlexSansArabic(
+                              color: AppColors.ink400, fontSize: 14),
+                          filled: true,
+                          fillColor: AppColors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: AppColors.ink100, width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: AppColors.ink100, width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: AppColors.navy600, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // OTP label
+                      Text(
+                        AppStrings.codeLabel,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // 4-box OTP row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List.generate(
+                          4,
+                          (i) => _OtpBox(
+                            controller: _otpControllers[i],
+                            focusNode: _otpFocusNodes[i],
+                            onChanged: (v) => _onOtpChanged(v, i),
+                          ),
+                        ),
+                      ),
+
+                      // Error banner
+                      if (hasError) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.riskCritBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.riskCritText.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            AppStrings.loginError,
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 13,
+                              color: AppColors.riskCritText,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 32),
+
+                      // Login button
+                      SizedBox(
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.navy600,
+                            foregroundColor: AppColors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                                )
+                              : Text(
+                                  AppStrings.loginButton,
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700),
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      Text(
+                        AppStrings.disclaimer,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 11,
+                          color: AppColors.ink400,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OtpBox extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+
+  const _OtpBox({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: TextFormField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        maxLength: 1,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        onChanged: onChanged,
+        style: GoogleFonts.ibmPlexSansArabic(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: AppColors.navy600,
+        ),
+        decoration: InputDecoration(
+          counterText: '',
+          filled: true,
+          fillColor: AppColors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.ink100),
           ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.ink100),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppColors.navy600, width: 2),
+          ),
+          contentPadding: EdgeInsets.zero,
         ),
       ),
     );
