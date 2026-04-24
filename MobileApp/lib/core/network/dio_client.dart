@@ -3,26 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
 
-final dioClientProvider = Provider<DioClient>((ref) => DioClient());
+final tokenProvider = StateProvider<String?>((ref) => null);
+
+final dioClientProvider = Provider<DioClient>((ref) {
+  final token = ref.watch(tokenProvider);
+  return DioClient(token: token);
+});
 
 class DioClient {
   late final Dio _dio;
 
-  DioClient() {
+  DioClient({String? token}) {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
-      headers: {'Content-Type': 'application/json'},
-    ));
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('patient_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
       },
     ));
   }

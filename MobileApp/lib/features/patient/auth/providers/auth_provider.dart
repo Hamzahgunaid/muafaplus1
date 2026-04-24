@@ -15,31 +15,26 @@ class AuthState {
 
   AuthState({
     this.status = AuthStatus.initial,
-    this.token,
-    this.phoneNumber,
-    this.referralCount,
-    this.errorMessage,
+    this.token, this.phoneNumber,
+    this.referralCount, this.errorMessage,
   });
 
   AuthState copyWith({
-    AuthStatus? status,
-    String? token,
-    String? phoneNumber,
-    int? referralCount,
-    String? errorMessage,
-  }) =>
-      AuthState(
-        status: status ?? this.status,
-        token: token ?? this.token,
-        phoneNumber: phoneNumber ?? this.phoneNumber,
-        referralCount: referralCount ?? this.referralCount,
-        errorMessage: errorMessage ?? this.errorMessage,
-      );
+    AuthStatus? status, String? token,
+    String? phoneNumber, int? referralCount, String? errorMessage,
+  }) => AuthState(
+    status: status ?? this.status,
+    token: token ?? this.token,
+    phoneNumber: phoneNumber ?? this.phoneNumber,
+    referralCount: referralCount ?? this.referralCount,
+    errorMessage: errorMessage ?? this.errorMessage,
+  );
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  final DioClient _dioClient;
-  AuthNotifier(this._dioClient) : super(AuthState()) {
+  final Ref _ref;
+
+  AuthNotifier(this._ref) : super(AuthState()) {
     _checkExistingToken();
   }
 
@@ -47,6 +42,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('patient_token');
     if (token != null) {
+      _ref.read(tokenProvider.notifier).state = token;
       state = state.copyWith(
         status: AuthStatus.authenticated,
         token: token,
@@ -58,15 +54,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login(String phoneNumber, String code) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
-      final response = await _dioClient.dio.post(
+      final dio = _ref.read(dioClientProvider).dio;
+      final response = await dio.post(
         ApiConstants.patientLogin,
-        data: PatientLoginRequest(phoneNumber: phoneNumber, code: code).toJson(),
+        data: PatientLoginRequest(
+          phoneNumber: phoneNumber, code: code).toJson(),
       );
       final result = PatientLoginResponse.fromJson(response.data);
       if (result.success && result.token != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('patient_token', result.token!);
-        await prefs.setString('patient_phone', result.phoneNumber ?? phoneNumber);
+        await prefs.setString('patient_phone',
+          result.phoneNumber ?? phoneNumber);
+        _ref.read(tokenProvider.notifier).state = result.token;
         state = state.copyWith(
           status: AuthStatus.authenticated,
           token: result.token,
@@ -76,15 +76,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return true;
       }
       state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: result.error,
-      );
+        status: AuthStatus.error, errorMessage: result.error);
       return false;
     } catch (e) {
       state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: e.toString(),
-      );
+        status: AuthStatus.error, errorMessage: e.toString());
       return false;
     }
   }
@@ -93,10 +89,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('patient_token');
     await prefs.remove('patient_phone');
+    _ref.read(tokenProvider.notifier).state = null;
     state = AuthState();
   }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
-  (ref) => AuthNotifier(ref.watch(dioClientProvider)),
+  (ref) => AuthNotifier(ref),
 );
