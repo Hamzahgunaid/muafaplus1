@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -27,24 +26,23 @@ class ReferralSummary {
   );
 }
 
-final referralsProvider = FutureProvider<List<ReferralSummary>>((ref) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('patient_token') ?? '';
+final referralsProvider = FutureProvider.family<List<ReferralSummary>, String>(
+  (ref, token) async {
+    final dio = Dio(BaseOptions(
+      baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ));
 
-  final dio = Dio(BaseOptions(
-    baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  ));
-
-  final response = await dio.get('/referrals');
-  final list = response.data['data'] as List? ?? [];
-  return list.map((j) => ReferralSummary.fromJson(j)).toList();
-});
+    final response = await dio.get('/referrals');
+    final list = response.data['data'] as List? ?? [];
+    return list.map((j) => ReferralSummary.fromJson(j)).toList();
+  },
+);
 
 class PatientHomeScreen extends ConsumerWidget {
   const PatientHomeScreen({super.key});
@@ -82,7 +80,8 @@ class PatientHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    final referralsAsync = ref.watch(referralsProvider);
+    final token = auth.token ?? '';
+    final referralsAsync = ref.watch(referralsProvider(token));
 
     return Directionality(
       textDirection: TextDirection.rtl,

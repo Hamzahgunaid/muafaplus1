@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../features/patient/auth/providers/auth_provider.dart';
 
 // ── Models ──────────────────────────────────────────────────────────────────
 
@@ -68,10 +68,10 @@ class ReferralDetail {
 
 // ── Providers ────────────────────────────────────────────────────────────────
 
-final referralDetailProvider = FutureProvider.family<ReferralDetail, String>(
-  (ref, id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('patient_token') ?? '';
+final referralDetailProvider = FutureProvider.family<ReferralDetail, (String, String)>(
+  (ref, params) async {
+    final id = params.$1;
+    final token = params.$2;
 
     final dio = Dio(BaseOptions(
       baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
@@ -141,8 +141,7 @@ class _ReferralDetailScreenState
   Future<void> _triggerStage2() async {
     setState(() => _triggeringStage2 = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('patient_token') ?? '';
+      final token = ref.read(authProvider).token ?? '';
       final dio = Dio(BaseOptions(
         baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
         connectTimeout: const Duration(seconds: 30),
@@ -153,7 +152,7 @@ class _ReferralDetailScreenState
         },
       ));
       await dio.post('/referrals/${widget.referralId}/stage2');
-      ref.invalidate(referralDetailProvider(widget.referralId));
+      ref.invalidate(referralDetailProvider((widget.referralId, token)));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,8 +166,9 @@ class _ReferralDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    final token = ref.watch(authProvider).token ?? '';
     final detailAsync =
-        ref.watch(referralDetailProvider(widget.referralId));
+        ref.watch(referralDetailProvider((widget.referralId, token)));
 
     return Directionality(
       textDirection: TextDirection.rtl,
