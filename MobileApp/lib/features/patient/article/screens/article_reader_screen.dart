@@ -133,33 +133,35 @@ class _ArticleReaderScreenState
             ? Center(child: Text(_error!,
                 style: GoogleFonts.ibmPlexSansArabic(
                   color: AppColors.ink500)))
-            : Markdown(
+            : SingleChildScrollView(
                 controller: _scrollController,
-                data: _content ?? '',
                 padding: const EdgeInsets.all(20),
-                styleSheet: MarkdownStyleSheet(
-                  h1: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 20, fontWeight: FontWeight.w700,
-                    color: AppColors.navy600),
-                  h2: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 17, fontWeight: FontWeight.w700,
-                    color: AppColors.navy600),
-                  h3: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 15, fontWeight: FontWeight.w600,
-                    color: AppColors.ink900),
-                  p: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 15, color: AppColors.ink700,
-                    height: 1.8),
-                  listBullet: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 15, color: AppColors.ink700),
-                  strong: GoogleFonts.ibmPlexSansArabic(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink900),
-                  blockquoteDecoration: BoxDecoration(
-                    color: AppColors.navy600.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: const Border(left: BorderSide(
-                      color: AppColors.orange500, width: 3))),
+                child: MarkdownBody(
+                  data: _content ?? '',
+                  styleSheet: MarkdownStyleSheet(
+                    h1: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 20, fontWeight: FontWeight.w700,
+                      color: AppColors.navy600),
+                    h2: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 17, fontWeight: FontWeight.w700,
+                      color: AppColors.navy600),
+                    h3: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 15, fontWeight: FontWeight.w600,
+                      color: AppColors.ink900),
+                    p: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 15, color: AppColors.ink700,
+                      height: 1.8),
+                    listBullet: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 15, color: AppColors.ink700),
+                    strong: GoogleFonts.ibmPlexSansArabic(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink900),
+                    blockquoteDecoration: BoxDecoration(
+                      color: AppColors.navy600.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: const Border(left: BorderSide(
+                        color: AppColors.orange500, width: 3))),
+                  ),
                 ),
               ),
         bottomNavigationBar: Container(
