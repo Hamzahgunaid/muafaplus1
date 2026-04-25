@@ -67,11 +67,18 @@ public class TestScenariosController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ValidationErrorResponse());
 
+        // Physician role: PhysicianId claim; SuperAdmin/HospitalAdmin: fall back to UserId
         var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+        {
+            physicianId = User.FindFirst("UserId")?.Value
+                       ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+
         if (string.IsNullOrEmpty(physicianId))
             return Unauthorized(new ApiResponse<object>
             {
-                Success = false, Error = "لم يتم التحقق من هوية الطبيب.", ErrorType = "MissingPhysicianClaim"
+                Success = false, Error = "لم يتم التحقق من هوية المستخدم.", ErrorType = "MissingUserClaim"
             });
 
         var tenantIdClaim = User.FindFirst("TenantId")?.Value;
@@ -88,7 +95,9 @@ public class TestScenariosController : ControllerBase
         try
         {
             // Stage 1 only — evaluation scenarios don't trigger Stage 2 (Rule 3)
-            var result = await _workflow.ExecuteStage1OnlyAsync(physicianId, patientData);
+            // skipPatientCreation: test scenarios are synthetic — no real patient record needed
+            var result = await _workflow.ExecuteStage1OnlyAsync(
+                physicianId, patientData, skipPatientCreation: true);
 
             if (!result.Success || result.Output == null)
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>
@@ -144,11 +153,18 @@ public class TestScenariosController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<TestScenarioResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<TestScenarioResponse>>>> GetTestScenarios()
     {
+        // Physician role: PhysicianId claim; SuperAdmin/HospitalAdmin: fall back to UserId
         var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
+        if (string.IsNullOrEmpty(physicianId))
+        {
+            physicianId = User.FindFirst("UserId")?.Value
+                       ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+
         if (string.IsNullOrEmpty(physicianId))
             return Unauthorized(new ApiResponse<List<TestScenarioResponse>>
             {
-                Success = false, Error = "غير مصرح", ErrorType = "MissingPhysicianClaim"
+                Success = false, Error = "غير مصرح", ErrorType = "MissingUserClaim"
             });
 
         var scenarios = await _db.TestScenarios
@@ -332,7 +348,8 @@ public class TestScenariosController : ControllerBase
         try
         {
             // Rule 1 + Rule 12 handled inside ExecuteStage1OnlyAsync
-            var result = await _workflow.ExecuteStage1OnlyAsync(physicianId, patientData);
+            var result = await _workflow.ExecuteStage1OnlyAsync(
+                physicianId, patientData, skipPatientCreation: true);
 
             if (result.Success && result.Output != null)
             {

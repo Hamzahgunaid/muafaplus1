@@ -112,6 +112,7 @@ public class MuafaDbContext : DbContext
             entity.HasOne(e => e.Patient)
                   .WithMany(p => p.GenerationSessions)
                   .HasForeignKey(e => e.PatientId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.Physician)
                   .WithMany(p => p.GenerationSessions)

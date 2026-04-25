@@ -118,17 +118,25 @@ public class WorkflowService
         }
     }
 
-    public async Task<Stage1Result> ExecuteStage1OnlyAsync(string physicianId, PatientData patientData)
+    public async Task<Stage1Result> ExecuteStage1OnlyAsync(
+        string physicianId,
+        PatientData patientData,
+        bool skipPatientCreation = false)
     {
         var sessionId = Guid.NewGuid().ToString();
-        var patientId = Guid.NewGuid().ToString();
         var riskScore = _riskCalculator.Calculate(patientData);
 
-        await CreatePatientAsync(physicianId, patientData, patientId);
+        string? sessionPatientId = null;
+        if (!skipPatientCreation)
+        {
+            var patientId = Guid.NewGuid().ToString();
+            await CreatePatientAsync(physicianId, patientData, patientId);
+            sessionPatientId = patientId;
+        }
 
         var session = new GenerationSession
         {
-            SessionId   = sessionId, PatientId   = patientId,
+            SessionId   = sessionId, PatientId   = sessionPatientId,
             PhysicianId = physicianId, Stage      = "stage_1",
             Status      = "in_progress", RiskLevel = riskScore.RiskLevelString
         };

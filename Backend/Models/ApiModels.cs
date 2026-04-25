@@ -11,8 +11,7 @@ public class GenerationSession
     [Key]
     public string SessionId { get; set; } = Guid.NewGuid().ToString();
 
-    [Required]
-    public string PatientId { get; set; } = string.Empty;
+    public string? PatientId { get; set; }
 
     [Required]
     public string PhysicianId { get; set; } = string.Empty;
@@ -561,8 +560,8 @@ public class CreateTenantUserRequest
 {
     [Required] public string  Email       { get; set; } = string.Empty;
     [Required] public string  FullName    { get; set; } = string.Empty;
-    [Required] public string  Password    { get; set; } = string.Empty;
     [Required] public string  Role        { get; set; } = string.Empty;
+    public            string? PhoneNumber { get; set; }
     public            string? Specialty   { get; set; }
     public            string? Institution { get; set; }
 }

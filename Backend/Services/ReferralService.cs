@@ -330,8 +330,7 @@ public class ReferralService
         return referral == null
             ? null
             : MapToResponse(referral, referral.PatientAccess?.PhoneNumber ?? string.Empty,
-                            referral.Engagement,
-                            referral.ChatThread?.IsEnabled ?? false);
+                            referral.Engagement);
     }
 
     public async Task<(bool success, string? error)> SubmitFeedbackAsync(
@@ -383,6 +382,21 @@ public class ReferralService
         return referrals
             .Select(r => MapToResponse(r, r.PatientAccess?.PhoneNumber ?? string.Empty, r.Engagement))
             .ToList();
+    }
+
+    public async Task<ReferralResponse?> GetReferralForPatientAsync(Guid referralId, Guid patientAccessId)
+    {
+        var referral = await _db.Referrals
+            .Include(r => r.PatientAccess)
+            .Include(r => r.Engagement)
+            .Include(r => r.ChatThread)
+            .FirstOrDefaultAsync(r => r.ReferralId == referralId
+                                   && r.PatientAccessId == patientAccessId);
+
+        return referral == null
+            ? null
+            : MapToResponse(referral, referral.PatientAccess?.PhoneNumber ?? string.Empty,
+                            referral.Engagement);
     }
 
     /// <summary>
@@ -624,8 +638,7 @@ public class ReferralService
     private static ReferralResponse MapToResponse(
         Referral            referral,
         string              phone,
-        ReferralEngagement? engagement,
-        bool                chatEnabled = false)
+        ReferralEngagement? engagement)
     {
         return new ReferralResponse
         {
@@ -638,7 +651,7 @@ public class ReferralService
             DeliveredAt         = referral.DeliveredAt,
             CreatedAt           = referral.CreatedAt,
             SessionId           = referral.SessionId,
-            ChatEnabled         = chatEnabled,
+            ChatEnabled         = referral.ChatEnabled,
             Engagement          = engagement == null ? null : new ReferralEngagementResponse
             {
                 MessageSentAt       = engagement.MessageSentAt,

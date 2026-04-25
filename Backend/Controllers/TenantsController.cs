@@ -20,15 +20,18 @@ public class TenantsController : ControllerBase
     private readonly TenantService              _tenants;
     private readonly MuafaDbContext             _db;
     private readonly ILogger<TenantsController> _logger;
+    private readonly WhatsAppService            _whatsApp;
 
     public TenantsController(
         TenantService              tenants,
         MuafaDbContext             db,
-        ILogger<TenantsController> logger)
+        ILogger<TenantsController> logger,
+        WhatsAppService            whatsApp)
     {
-        _tenants = tenants;
-        _db      = db;
-        _logger  = logger;
+        _tenants  = tenants;
+        _db       = db;
+        _logger   = logger;
+        _whatsApp = whatsApp;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -333,20 +336,34 @@ public class TenantsController : ControllerBase
                 ErrorType = "NotFound"
             });
 
-        var users = await _db.Users
+        var rawUsers = await _db.Users
             .Where(u => u.TenantId == id)
-            .OrderBy(u => u.CreatedAt)
-            .Select(u => new UserSummaryResponse
-            {
-                UserId    = u.UserId,
-                Email     = u.Email,
-                FullName  = u.FullName,
-                Role      = u.Role,
-                TenantId  = u.TenantId,
-                IsActive  = u.IsActive,
-                CreatedAt = u.CreatedAt
-            })
+            .Join(_db.UserRoles,
+                  u  => u.UserId,
+                  ur => ur.UserId,
+                  (u, ur) => new {
+                      u.UserId,
+                      u.Email,
+                      u.FullName,
+                      u.IsActive,
+                      u.CreatedAt,
+                      u.TenantId,
+                      ur.Role
+                  })
             .ToListAsync();
+
+        var users = rawUsers.Select(x => new UserSummaryResponse
+            {
+                UserId    = x.UserId,
+                Email     = x.Email,
+                FullName  = x.FullName ?? string.Empty,
+                Role      = x.Role.ToString(),
+                TenantId  = x.TenantId,
+                IsActive  = x.IsActive,
+                CreatedAt = x.CreatedAt,
+            })
+            .OrderBy(u => u.FullName)
+            .ToList();
 
         return Ok(new ApiResponse<List<UserSummaryResponse>> { Success = true, Data = users });
     }
@@ -357,77 +374,119 @@ public class TenantsController : ControllerBase
 
     /// <summary>
     /// Creates a new user within the specified tenant.
-    /// Returns 409 Conflict if a user with the same email already exists.
+    /// Auto-generates a temporary password and sends WhatsApp notification if phone provided.
     /// </summary>
     [HttpPost("{id:guid}/users")]
-    [ProducesResponseType(typeof(ApiResponse<UserSummaryResponse>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<object>),              StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>),              StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>),              StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<UserSummaryResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UserSummaryResponse>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<UserSummaryResponse>>> CreateUser(
         Guid id,
         [FromBody] CreateTenantUserRequest request)
     {
         if (!ModelState.IsValid)
-            return BadRequest(new ApiResponse<object>
+            return BadRequest(new ApiResponse<UserSummaryResponse>
             {
-                Success = false,
-                Error   = "Validation failed.",
-                Metadata = new Dictionary<string, object>
-                {
-                    ["errors"] = ModelState.Values
-                        .SelectMany(v => v.Errors)
-                        .Select(e => e.ErrorMessage)
-                        .ToList()
-                }
+                Success = false, Error = "بيانات غير صالحة"
             });
 
-        var tenant = await _tenants.GetTenantAsync(id);
-        if (tenant == null)
-            return NotFound(new ApiResponse<object>
-            {
-                Success   = false,
-                Error     = $"Tenant {id} not found.",
-                ErrorType = "NotFound"
-            });
+        var role          = User.FindFirst("Role")?.Value;
+        var tokenTenantId = User.FindFirst("TenantId")?.Value;
+
+        if (role == "HospitalAdmin" && tokenTenantId != id.ToString())
+            return Forbid();
+
+        if (role != "SuperAdmin" && role != "HospitalAdmin")
+            return Forbid();
 
         var exists = await _db.Users.AnyAsync(u => u.Email == request.Email);
         if (exists)
-            return Conflict(new ApiResponse<object>
+            return BadRequest(new ApiResponse<UserSummaryResponse>
             {
-                Success   = false,
-                Error     = $"A user with email {request.Email} already exists.",
-                ErrorType = "Conflict"
+                Success = false, Error = "البريد الإلكتروني مستخدم بالفعل"
             });
 
-        var user = new AppUser
+        var tempPassword = GenerateTemporaryPassword();
+
+        var newUser = new AppUser
         {
             UserId               = Guid.NewGuid(),
             TenantId             = id,
             Email                = request.Email,
             FullName             = request.FullName,
-            PasswordHash         = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
-            Role                 = request.Role,
+            Mobile               = request.PhoneNumber,
+            PasswordHash         = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 12),
             IsActive             = true,
+            CreatedAt            = DateTime.UtcNow,
             MustResetOnNextLogin = true,
-            CreatedAt            = DateTime.UtcNow
+            Role                 = request.Role,
         };
 
-        _db.Users.Add(user);
+        _db.Users.Add(newUser);
+
+        if (Enum.TryParse<TenantRole>(request.Role, out var tenantRole))
+        {
+            _db.UserRoles.Add(new UserRole
+            {
+                UserId     = newUser.UserId,
+                TenantId   = id,
+                Role       = tenantRole,
+                AssignedAt = DateTime.UtcNow,
+            });
+        }
+
         await _db.SaveChangesAsync();
 
-        var response = new UserSummaryResponse
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
         {
-            UserId    = user.UserId,
-            Email     = user.Email,
-            FullName  = user.FullName,
-            Role      = user.Role,
-            TenantId  = user.TenantId,
-            IsActive  = user.IsActive,
-            CreatedAt = user.CreatedAt
-        };
+            try
+            {
+                var roleLabel = request.Role switch
+                {
+                    "HospitalAdmin" => "مدير مستشفى",
+                    "Physician"     => "طبيب",
+                    "Assistant"     => "مساعد",
+                    _               => request.Role
+                };
 
-        return CreatedAtAction(nameof(GetById), new { id = user.UserId },
-            new ApiResponse<UserSummaryResponse> { Success = true, Data = response });
+                var message = $"مرحباً {request.FullName}،\n\n" +
+                              $"تم إنشاء حسابك في منصة معافى+ بدور {roleLabel}.\n\n" +
+                              $"بيانات الدخول:\n" +
+                              $"البريد الإلكتروني: {request.Email}\n" +
+                              $"كلمة المرور المؤقتة: {tempPassword}\n\n" +
+                              $"يرجى تسجيل الدخول وتغيير كلمة المرور فور الدخول.\n" +
+                              $"رابط المنصة: https://muafaplus1.vercel.app";
+
+                await _whatsApp.SendTextMessageAsync(request.PhoneNumber, message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("WhatsApp notification failed for new user {Email}: {Error}",
+                    request.Email, ex.Message);
+            }
+        }
+
+        return Ok(new ApiResponse<UserSummaryResponse>
+        {
+            Success = true,
+            Data = new UserSummaryResponse
+            {
+                UserId    = newUser.UserId,
+                Email     = newUser.Email,
+                FullName  = newUser.FullName ?? string.Empty,
+                Role      = request.Role,
+                TenantId  = newUser.TenantId,
+                IsActive  = newUser.IsActive,
+                CreatedAt = newUser.CreatedAt,
+            }
+        });
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, 10)
+            .Select(s => s[random.Next(s.Length)])
+            .ToArray());
     }
 }

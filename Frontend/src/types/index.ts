@@ -206,6 +206,27 @@ export interface ReferralEngagementResponse {
   feedbackSubmittedAt:  string | null;
 }
 
+export interface ArticleEngagementResponse {
+  articleId:             string;
+  articleTitle?:         string;
+  openedAt?:             string | null;
+  depth25At?:            string | null;
+  depth50At?:            string | null;
+  depth75At?:            string | null;
+  completedAt?:          string | null;
+  timeOnArticleSeconds?: number;
+  reaction?:             string;
+}
+
+export interface FullEngagementResponse {
+  referralId:   string;
+  status:       string;
+  riskLevel?:   string;
+  patientPhone: string;
+  timeline?:    ReferralEngagementResponse;
+  articles:     ArticleEngagementResponse[];
+}
+
 // ── Stage1Output — matches Backend/Models/ArticleModels.cs Stage1Output ──────
 // JSON keys match [JsonPropertyName] attributes exactly.
 // ArticleSpec and RiskAssessment now have full snake_case [JsonPropertyName] attributes.
@@ -370,12 +391,13 @@ export interface UserResponse {
 }
 
 export interface CreateUserRequest {
-  email:      string;
-  fullName:   string;
-  password:   string;
-  role:       string;
-  specialty?: string;
-  tenantId:   string;
+  email:        string;
+  fullName:     string;
+  role:         string;
+  tenantId:     string;
+  phoneNumber?: string;
+  specialty?:   string;
+  institution?: string;
 }
 
 // ── Tenant Settings ───────────────────────────────────────────────────────────

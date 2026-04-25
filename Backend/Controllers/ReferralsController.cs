@@ -157,6 +157,25 @@ public class ReferralsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>),           StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ReferralResponse>>> GetById(Guid id)
     {
+        var role = User.FindFirst("Role")?.Value;
+
+        if (role == "Patient")
+        {
+            var patientAccessId = Guid.TryParse(
+                User.FindFirst("PatientAccessId")?.Value, out var paid) ? paid : Guid.Empty;
+
+            var patientReferral = await _referrals.GetReferralForPatientAsync(id, patientAccessId);
+            if (patientReferral == null)
+                return NotFound(new ApiResponse<object>
+                {
+                    Success   = false,
+                    Error     = $"Referral {id} not found.",
+                    ErrorType = "NotFound"
+                });
+
+            return Ok(new ApiResponse<ReferralResponse> { Success = true, Data = patientReferral });
+        }
+
         var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
         if (string.IsNullOrEmpty(physicianId))
             return Unauthorized(new ApiResponse<object>
@@ -336,7 +355,7 @@ public class ReferralsController : ControllerBase
         var (referral, accessError) = await LoadAndVerifyReferralAccessAsync(id);
         if (accessError != null) return accessError!;
 
-        // ── Dual chat gate: tenant AND physician must both have chat enabled ──
+        // ── Chat gate: tenant must have chat enabled ──────────────────────────
         var settings = await _db.TenantSettings
             .FirstOrDefaultAsync(s => s.TenantId == referral!.TenantId);
 
@@ -346,17 +365,6 @@ public class ReferralsController : ControllerBase
                 Success   = false,
                 Error     = "Chat is not enabled for this institution.",
                 ErrorType = "ChatDisabled"
-            });
-
-        var physician = await _db.Physicians
-            .FirstOrDefaultAsync(p => p.PhysicianId == referral!.PhysicianId);
-
-        if (physician == null || !physician.ChatEnabled)
-            return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<object>
-            {
-                Success   = false,
-                Error     = "Chat has not been enabled by the physician for this referral.",
-                ErrorType = "ChatDisabledByPhysician"
             });
 
         // ── Find or create thread ─────────────────────────────────────────────
