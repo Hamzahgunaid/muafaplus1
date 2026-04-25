@@ -27,9 +27,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/referral/:id',
         builder: (_, state) => ReferralDetailScreen(
           referralId: state.pathParameters['id']!)),
-      GoRoute(path: '/article/:id',
+      GoRoute(path: '/article/:referralId/:articleId',
         builder: (_, state) => ArticleReaderScreen(
-          articleId: state.pathParameters['id']!)),
+          referralId: state.pathParameters['referralId']!,
+          articleId: state.pathParameters['articleId']!)),
       GoRoute(path: '/feedback/:id',
         builder: (_, state) => FeedbackScreen(
           referralId: state.pathParameters['id']!)),

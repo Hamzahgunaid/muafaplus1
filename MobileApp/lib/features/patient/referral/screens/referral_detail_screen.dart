@@ -21,12 +21,16 @@ class ArticleItem {
     required this.status,
   });
 
-  factory ArticleItem.fromJson(Map<String, dynamic> j) => ArticleItem(
-    id: j['articleId'] ?? j['id'] ?? '',
-    title: j['title'] ?? '',
-    content: j['content'] ?? '',
-    status: j['status'] ?? 'Ready',
-  );
+  factory ArticleItem.fromJson(Map<String, dynamic> j) {
+    print('DEBUG ArticleItem fields: ${j.keys.toList()}');
+    return ArticleItem(
+      id: j['articleId'] ?? j['id'] ?? '',
+      title: j['title'] ?? j['articleTitle'] ?? j['heading'] ??
+        j['outline'] ?? j['sectionTitle'] ?? 'مقال طبي',
+      content: j['content'] ?? j['articleContent'] ?? j['body'] ?? '',
+      status: j['status'] ?? j['generationStatus'] ?? 'Ready',
+    );
+  }
 
   bool get isReady => status == 'Ready';
 }
@@ -345,7 +349,7 @@ class _ReferralDetailScreenState
                   _ArticleCard(
                     article: summary,
                     isStage1: true,
-                    onTap: () => context.push('/article/${summary.id}'),
+                    onTap: () => context.push('/article/${detail.id}/${summary.id}'),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -367,7 +371,7 @@ class _ReferralDetailScreenState
                     article: article,
                     isStage1: false,
                     onTap: article.isReady
-                      ? () => context.push('/article/${article.id}')
+                      ? () => context.push('/article/${detail.id}/${article.id}')
                       : null,
                   )),
                 ],

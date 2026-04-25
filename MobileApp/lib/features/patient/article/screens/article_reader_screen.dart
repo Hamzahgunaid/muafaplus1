@@ -7,8 +7,13 @@ import '../../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class ArticleReaderScreen extends ConsumerStatefulWidget {
+  final String referralId;
   final String articleId;
-  const ArticleReaderScreen({super.key, required this.articleId});
+  const ArticleReaderScreen({
+    super.key,
+    required this.referralId,
+    required this.articleId,
+  });
 
   @override
   ConsumerState<ArticleReaderScreen> createState() =>
@@ -24,6 +29,8 @@ class _ArticleReaderScreenState
   String? _error;
   double _scrollDepth = 0;
   final _scrollController = ScrollController();
+
+  String get referralId => widget.referralId;
 
   @override
   void initState() {
@@ -58,20 +65,34 @@ class _ArticleReaderScreenState
           'Authorization': 'Bearer $token',
         },
       ));
-      final response = await dio.get('/articles/${widget.articleId}');
-      print('DEBUG article response: ${response.data}');
-      final data = response.data['data'] ?? response.data;
-      setState(() {
-        _title   = data['title'] ?? data['articleTitle'] ?? 'مقال طبي';
-        _content = data['content'] ?? data['articleContent'] ?? data['body'] ?? '';
-        _loading = false;
-      });
+      final response = await dio.get('/referrals/$referralId/articles');
+      print('DEBUG articles for reader: ${response.data}');
+      final list = response.data['data'] as List? ?? [];
+
+      Map<String, dynamic>? article;
+      for (final a in list) {
+        if ((a['articleId'] ?? a['id'] ?? '') == widget.articleId) {
+          article = a as Map<String, dynamic>;
+          break;
+        }
+      }
+      article ??= list.isNotEmpty ? list.first as Map<String, dynamic> : null;
+
+      if (article != null) {
+        print('DEBUG matched article: $article');
+        setState(() {
+          _title   = article!['title'] ?? article['articleTitle'] ??
+            article['heading'] ?? 'مقال طبي';
+          _content = article['content'] ?? article['articleContent'] ??
+            article['body'] ?? '';
+          _loading = false;
+        });
+      } else {
+        setState(() { _error = 'المقال غير موجود'; _loading = false; });
+      }
     } catch (e) {
       print('DEBUG article load error: $e');
-      setState(() {
-        _error   = 'تعذّر تحميل المقال';
-        _loading = false;
-      });
+      setState(() { _error = 'تعذّر تحميل المقال'; _loading = false; });
     }
   }
 
