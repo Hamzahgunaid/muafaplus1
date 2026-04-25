@@ -51,28 +51,16 @@ class ReferralDetail {
   });
 
   factory ReferralDetail.fromJson(Map<String, dynamic> j) {
-    // Try to find summary article from multiple possible locations
-    ArticleItem? summaryArticle;
+    final status = j['status'] as String? ?? '';
 
-    final stage1 = j['stage1'];
-    if (stage1 != null && stage1['summaryArticle'] != null) {
-      summaryArticle = ArticleItem.fromJson(stage1['summaryArticle']);
-    } else if (j['summaryArticle'] != null) {
-      summaryArticle = ArticleItem.fromJson(j['summaryArticle']);
-    } else if (j['articles'] != null) {
-      final articles = j['articles'] as List;
-      if (articles.isNotEmpty) {
-        summaryArticle = ArticleItem.fromJson(articles.first);
-      }
-    } else if (j['generatedArticles'] != null) {
-      final articles = j['generatedArticles'] as List;
-      if (articles.isNotEmpty) {
-        summaryArticle = ArticleItem.fromJson(articles.first);
-      }
+    String stage2Status;
+    if (status == 'Stage2Complete') {
+      stage2Status = 'Complete';
+    } else if (status == 'Stage2Generating') {
+      stage2Status = 'Generating';
+    } else {
+      stage2Status = 'NotRequested';
     }
-
-    final stage2Raw = j['stage2Articles'] as List? ??
-      j['detailedArticles'] as List? ?? [];
 
     return ReferralDetail(
       id: j['referralId'] ?? j['id'] ?? '',
@@ -80,9 +68,9 @@ class ReferralDetail {
       primaryDiagnosis: j['patientProfile']?['primaryDiagnosis'] ??
         j['primaryDiagnosis'] ?? '',
       ageGroup: j['patientProfile']?['ageGroup'] ?? j['ageGroup'] ?? '',
-      summaryArticle: summaryArticle,
-      stage2Articles: stage2Raw.map((a) => ArticleItem.fromJson(a)).toList(),
-      stage2Status: j['stage2Status'] ?? j['stage2GenerationStatus'] ?? 'NotRequested',
+      summaryArticle: null,
+      stage2Articles: [],
+      stage2Status: stage2Status,
     );
   }
 }
@@ -112,6 +100,33 @@ final referralDetailProvider = FutureProvider.family<ReferralDetail, (String, St
 
 final stage2StatusProvider = StateProvider.family<String, String>(
   (ref, id) => 'NotRequested',
+);
+
+final referralArticlesProvider = FutureProvider.family<List<ArticleItem>, (String, String)>(
+  (ref, params) async {
+    final id = params.$1;
+    final token = params.$2;
+
+    final dio = Dio(BaseOptions(
+      baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ));
+
+    try {
+      final response = await dio.get('/referrals/$id/articles');
+      print('DEBUG articles response: ${response.data}');
+      final list = response.data['data'] as List? ?? [];
+      return list.map((a) => ArticleItem.fromJson(a)).toList();
+    } catch (e) {
+      print('DEBUG articles error: $e');
+      return [];
+    }
+  },
 );
 
 // ── Screen ───────────────────────────────────────────────────────────────────
@@ -175,6 +190,7 @@ class _ReferralDetailScreenState
       ));
       await dio.post('/referrals/${widget.referralId}/stage2', data: {});
       ref.invalidate(referralDetailProvider((widget.referralId, token)));
+      ref.invalidate(referralArticlesProvider((widget.referralId, token)));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -226,6 +242,10 @@ class _ReferralDetailScreenState
   }
 
   Widget _buildContent(ReferralDetail detail) {
+    final token = ref.watch(authProvider).token ?? '';
+    final articlesAsync = ref.watch(
+      referralArticlesProvider((detail.id, token)));
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -303,41 +323,58 @@ class _ReferralDetailScreenState
 
         const SizedBox(height: 16),
 
-        // ── Stage 1 Summary ───────────────────────────────────────────────
-        if (detail.summaryArticle != null) ...[
-          _SectionHeader(title: 'الملخص الصحي', icon: Icons.article_outlined),
-          const SizedBox(height: 8),
-          _ArticleCard(
-            article: detail.summaryArticle!,
-            isStage1: true,
-            onTap: () => context.push(
-              '/article/${detail.summaryArticle!.id}'),
-          ),
-          const SizedBox(height: 16),
-        ],
+        // ── Articles (loaded from /articles endpoint) ──────────────────────
+        articlesAsync.when(
+          loading: () => const Center(child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(color: AppColors.navy600))),
+          error: (e, _) => const SizedBox(),
+          data: (articles) {
+            final summary = articles.isNotEmpty ? articles.first : null;
+            final stage2 = articles.length > 1
+              ? articles.sublist(1) : <ArticleItem>[];
 
-        // ── Stage 2 Section ───────────────────────────────────────────────
-        _SectionHeader(
-          title: 'المقالات التفصيلية',
-          icon: Icons.menu_book_outlined),
-        const SizedBox(height: 8),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (summary != null) ...[
+                  _SectionHeader(
+                    title: 'الملخص الصحي',
+                    icon: Icons.article_outlined),
+                  const SizedBox(height: 8),
+                  _ArticleCard(
+                    article: summary,
+                    isStage1: true,
+                    onTap: () => context.push('/article/${summary.id}'),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
-        if (detail.stage2Status == 'NotRequested')
-          _Stage2TriggerCard(
-            isLoading: _triggeringStage2,
-            onTap: _triggerStage2,
-          )
-        else if (detail.stage2Status == 'Generating')
-          _GeneratingCard()
-        else ...[
-          ...detail.stage2Articles.map((article) => _ArticleCard(
-            article: article,
-            isStage1: false,
-            onTap: article.isReady
-              ? () => context.push('/article/${article.id}')
-              : null,
-          )),
-        ],
+                _SectionHeader(
+                  title: 'المقالات التفصيلية',
+                  icon: Icons.menu_book_outlined),
+                const SizedBox(height: 8),
+
+                if (detail.stage2Status == 'NotRequested')
+                  _Stage2TriggerCard(
+                    isLoading: _triggeringStage2,
+                    onTap: _triggerStage2,
+                  )
+                else if (detail.stage2Status == 'Generating')
+                  _GeneratingCard()
+                else ...[
+                  ...stage2.map((article) => _ArticleCard(
+                    article: article,
+                    isStage1: false,
+                    onTap: article.isReady
+                      ? () => context.push('/article/${article.id}')
+                      : null,
+                  )),
+                ],
+              ],
+            );
+          },
+        ),
 
         const SizedBox(height: 32),
 
