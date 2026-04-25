@@ -12,22 +12,31 @@ class AuthState {
   final String? phoneNumber;
   final int? referralCount;
   final String? errorMessage;
+  final bool isInitializing;
 
   AuthState({
     this.status = AuthStatus.initial,
-    this.token, this.phoneNumber,
-    this.referralCount, this.errorMessage,
+    this.token,
+    this.phoneNumber,
+    this.referralCount,
+    this.errorMessage,
+    this.isInitializing = true,
   });
 
   AuthState copyWith({
-    AuthStatus? status, String? token,
-    String? phoneNumber, int? referralCount, String? errorMessage,
+    AuthStatus? status,
+    String? token,
+    String? phoneNumber,
+    int? referralCount,
+    String? errorMessage,
+    bool? isInitializing,
   }) => AuthState(
     status: status ?? this.status,
     token: token ?? this.token,
     phoneNumber: phoneNumber ?? this.phoneNumber,
     referralCount: referralCount ?? this.referralCount,
     errorMessage: errorMessage ?? this.errorMessage,
+    isInitializing: isInitializing ?? this.isInitializing,
   );
 }
 
@@ -47,7 +56,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         status: AuthStatus.authenticated,
         token: token,
         phoneNumber: prefs.getString('patient_phone'),
+        isInitializing: false,
       );
+    } else {
+      state = state.copyWith(isInitializing: false);
     }
   }
 
