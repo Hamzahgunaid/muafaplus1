@@ -50,6 +50,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _checkExistingToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('patient_token');
+    print('DEBUG _checkExistingToken: token=${token != null ? token.substring(0, 20) : 'NULL'}');
     if (token != null) {
       _ref.read(tokenProvider.notifier).state = token;
       state = state.copyWith(
@@ -74,6 +75,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       final result = PatientLoginResponse.fromJson(response.data);
       if (result.success && result.token != null) {
+        print('DEBUG login success: token=${result.token!.substring(0, 20)}');
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('patient_token', result.token!);
         await prefs.setString('patient_phone',
@@ -85,12 +87,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
           phoneNumber: result.phoneNumber,
           referralCount: result.referralCount,
         );
+        print('DEBUG authProvider.token after login: ${state.token?.substring(0, 20)}');
         return true;
       }
       state = state.copyWith(
         status: AuthStatus.error, errorMessage: result.error);
       return false;
     } catch (e) {
+      print('DEBUG login error: $e');
       state = state.copyWith(
         status: AuthStatus.error, errorMessage: e.toString());
       return false;

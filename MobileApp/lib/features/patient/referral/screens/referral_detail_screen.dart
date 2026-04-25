@@ -167,6 +167,7 @@ class _ReferralDetailScreenState
   @override
   Widget build(BuildContext context) {
     final token = ref.watch(authProvider).token ?? '';
+    print('DEBUG referralDetail: token=${token.isEmpty ? "EMPTY" : token.substring(0, 20)}, id=${widget.referralId}');
     final detailAsync =
         ref.watch(referralDetailProvider((widget.referralId, token)));
 
