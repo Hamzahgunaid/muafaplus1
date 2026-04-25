@@ -442,6 +442,7 @@ public class ReferralService
         {
             ArticleId    = a.ArticleId,
             ArticleType  = a.ArticleType,
+            Title        = ExtractMarkdownTitle(a.Content),
             ContentAr    = a.Content,
             CoverageCodes = a.CoverageCodes,
             WordCount    = a.WordCount,
@@ -661,5 +662,17 @@ public class ReferralService
                 FeedbackSubmittedAt = engagement.FeedbackSubmittedAt
             }
         };
+    }
+
+    private static string ExtractMarkdownTitle(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return string.Empty;
+        foreach (var line in content.Split('\n'))
+        {
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("# "))
+                return trimmed[2..].Trim();
+        }
+        return string.Empty;
     }
 }

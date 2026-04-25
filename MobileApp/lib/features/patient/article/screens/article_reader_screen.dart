@@ -79,12 +79,11 @@ class _ArticleReaderScreenState
       article ??= list.isNotEmpty ? list.first as Map<String, dynamic> : null;
 
       if (article != null) {
-        print('DEBUG matched article: $article');
         setState(() {
           _title   = article!['title'] ?? article['articleTitle'] ??
             article['heading'] ?? 'مقال طبي';
-          _content = article['content'] ?? article['articleContent'] ??
-            article['body'] ?? '';
+          _content = article['content_ar'] ?? article['content'] ??
+            article['articleContent'] ?? article['body'] ?? '';
           _loading = false;
         });
       } else {
@@ -178,13 +177,13 @@ class _ArticleReaderScreenState
                   icon: Icons.thumb_up_outlined,
                   label: 'مفيد',
                   color: AppColors.green500,
-                  onTap: () => _submitReaction('Like'),
+                  onTap: () => _submitReaction('like'),
                 ),
                 _ReactionButton(
                   icon: Icons.thumb_down_outlined,
                   label: 'يحتاج تحسين',
                   color: AppColors.riskHighText,
-                  onTap: () => _submitReaction('Dislike'),
+                  onTap: () => _submitReaction('dislike'),
                 ),
               ],
             ),
@@ -208,7 +207,7 @@ class _ArticleReaderScreenState
       await dio.post('/articles/${widget.articleId}/engagement',
         data: {
           'referralId': widget.referralId,
-          'eventType': reaction.toLowerCase(),
+          'eventType': reaction,
         });
     } catch (e) {
       print('DEBUG reaction error: $e');

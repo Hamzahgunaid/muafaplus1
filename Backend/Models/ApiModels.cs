@@ -381,6 +381,7 @@ public class ReferralArticleResponse
 {
     public string  ArticleId    { get; set; } = string.Empty;
     public string  ArticleType  { get; set; } = string.Empty;
+    public string  Title        { get; set; } = string.Empty;
 
     [System.Text.Json.Serialization.JsonPropertyName("content_ar")]
     public string  ContentAr    { get; set; } = string.Empty;   // Rule 2 — never "content"
