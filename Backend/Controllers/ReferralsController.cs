@@ -157,6 +157,25 @@ public class ReferralsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>),           StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ReferralResponse>>> GetById(Guid id)
     {
+        var role = User.FindFirst("Role")?.Value;
+
+        if (role == "Patient")
+        {
+            var patientAccessId = Guid.TryParse(
+                User.FindFirst("PatientAccessId")?.Value, out var paid) ? paid : Guid.Empty;
+
+            var patientReferral = await _referrals.GetReferralForPatientAsync(id, patientAccessId);
+            if (patientReferral == null)
+                return NotFound(new ApiResponse<object>
+                {
+                    Success   = false,
+                    Error     = $"Referral {id} not found.",
+                    ErrorType = "NotFound"
+                });
+
+            return Ok(new ApiResponse<ReferralResponse> { Success = true, Data = patientReferral });
+        }
+
         var physicianId = User.FindFirst(ClaimNames.PhysicianId)?.Value;
         if (string.IsNullOrEmpty(physicianId))
             return Unauthorized(new ApiResponse<object>

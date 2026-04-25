@@ -384,6 +384,21 @@ public class ReferralService
             .ToList();
     }
 
+    public async Task<ReferralResponse?> GetReferralForPatientAsync(Guid referralId, Guid patientAccessId)
+    {
+        var referral = await _db.Referrals
+            .Include(r => r.PatientAccess)
+            .Include(r => r.Engagement)
+            .Include(r => r.ChatThread)
+            .FirstOrDefaultAsync(r => r.ReferralId == referralId
+                                   && r.PatientAccessId == patientAccessId);
+
+        return referral == null
+            ? null
+            : MapToResponse(referral, referral.PatientAccess?.PhoneNumber ?? string.Empty,
+                            referral.Engagement);
+    }
+
     /// <summary>
     /// Returns articles for a referral. Verifies the caller owns the referral either
     /// as the patient (patientAccessId) or the physician (physicianId).
