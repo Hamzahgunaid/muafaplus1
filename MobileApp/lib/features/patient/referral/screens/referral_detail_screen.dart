@@ -51,17 +51,38 @@ class ReferralDetail {
   });
 
   factory ReferralDetail.fromJson(Map<String, dynamic> j) {
+    // Try to find summary article from multiple possible locations
+    ArticleItem? summaryArticle;
+
     final stage1 = j['stage1'];
-    final stage2Raw = j['stage2Articles'] as List? ?? [];
+    if (stage1 != null && stage1['summaryArticle'] != null) {
+      summaryArticle = ArticleItem.fromJson(stage1['summaryArticle']);
+    } else if (j['summaryArticle'] != null) {
+      summaryArticle = ArticleItem.fromJson(j['summaryArticle']);
+    } else if (j['articles'] != null) {
+      final articles = j['articles'] as List;
+      if (articles.isNotEmpty) {
+        summaryArticle = ArticleItem.fromJson(articles.first);
+      }
+    } else if (j['generatedArticles'] != null) {
+      final articles = j['generatedArticles'] as List;
+      if (articles.isNotEmpty) {
+        summaryArticle = ArticleItem.fromJson(articles.first);
+      }
+    }
+
+    final stage2Raw = j['stage2Articles'] as List? ??
+      j['detailedArticles'] as List? ?? [];
+
     return ReferralDetail(
       id: j['referralId'] ?? j['id'] ?? '',
       riskLevel: j['riskLevel'] ?? 'LOW',
-      primaryDiagnosis: j['patientProfile']?['primaryDiagnosis'] ?? '',
-      ageGroup: j['patientProfile']?['ageGroup'] ?? '',
-      summaryArticle: stage1?['summaryArticle'] != null
-        ? ArticleItem.fromJson(stage1['summaryArticle']) : null,
+      primaryDiagnosis: j['patientProfile']?['primaryDiagnosis'] ??
+        j['primaryDiagnosis'] ?? '',
+      ageGroup: j['patientProfile']?['ageGroup'] ?? j['ageGroup'] ?? '',
+      summaryArticle: summaryArticle,
       stage2Articles: stage2Raw.map((a) => ArticleItem.fromJson(a)).toList(),
-      stage2Status: j['stage2Status'] ?? 'NotRequested',
+      stage2Status: j['stage2Status'] ?? j['stage2GenerationStatus'] ?? 'NotRequested',
     );
   }
 }
@@ -84,6 +105,7 @@ final referralDetailProvider = FutureProvider.family<ReferralDetail, (String, St
     ));
 
     final response = await dio.get('/referrals/$id');
+    print('DEBUG referral raw response: ${response.data}');
     return ReferralDetail.fromJson(response.data['data']);
   },
 );
@@ -151,7 +173,7 @@ class _ReferralDetailScreenState
           'Authorization': 'Bearer $token',
         },
       ));
-      await dio.post('/referrals/${widget.referralId}/stage2');
+      await dio.post('/referrals/${widget.referralId}/stage2', data: {});
       ref.invalidate(referralDetailProvider((widget.referralId, token)));
     } catch (e) {
       if (mounted) {
