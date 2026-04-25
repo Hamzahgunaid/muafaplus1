@@ -22,11 +22,11 @@ class ArticleItem {
   });
 
   factory ArticleItem.fromJson(Map<String, dynamic> j) {
-    print('DEBUG ArticleItem fields: ${j.keys.toList()}');
+    print('DEBUG ArticleItem FULL: ${j.toString()}');
     return ArticleItem(
       id: j['articleId'] ?? j['id'] ?? '',
       title: j['title'] ?? j['articleTitle'] ?? j['heading'] ??
-        j['outline'] ?? j['sectionTitle'] ?? 'مقال طبي',
+        j['outline'] ?? j['sectionTitle'] ?? j['coverageCode'] ?? 'مقال طبي',
       content: j['content'] ?? j['articleContent'] ?? j['body'] ?? '',
       status: j['status'] ?? j['generationStatus'] ?? 'Ready',
     );

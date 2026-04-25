@@ -204,16 +204,20 @@ class _ArticleReaderScreenState
           'Authorization': 'Bearer $token',
         },
       ));
-      await dio.post('/articles/${widget.articleId}/reaction',
-        data: {'reaction': reaction});
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('شكراً على تقييمك',
-            style: GoogleFonts.ibmPlexSansArabic()),
-          backgroundColor: AppColors.green500));
-      }
+      // POST /articles/{articleId}/engagement with eventType "like" or "dislike"
+      await dio.post('/articles/${widget.articleId}/engagement',
+        data: {
+          'referralId': widget.referralId,
+          'eventType': reaction.toLowerCase(),
+        });
     } catch (e) {
       print('DEBUG reaction error: $e');
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('شكراً على تقييمك',
+          style: GoogleFonts.ibmPlexSansArabic()),
+        backgroundColor: AppColors.green500));
     }
   }
 }
