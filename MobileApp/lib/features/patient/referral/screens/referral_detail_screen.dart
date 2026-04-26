@@ -55,13 +55,18 @@ class ReferralDetail {
   factory ReferralDetail.fromJson(Map<String, dynamic> j) {
     final status = j['status'] as String? ?? '';
 
+    // Stage 2 can only be triggered when Stage 1 is fully delivered.
+    // Stage2Requested means it's queued in Hangfire — treat as Generating.
     String stage2Status;
     if (status == 'Stage2Complete') {
       stage2Status = 'Complete';
-    } else if (status == 'Stage2Generating') {
+    } else if (status == 'Stage2Requested') {
       stage2Status = 'Generating';
-    } else {
+    } else if (status == 'Stage1Complete' || status == 'Stage1Delivered') {
       stage2Status = 'NotRequested';
+    } else {
+      // Created or any other pre-Stage1 status — Stage 1 not ready yet
+      stage2Status = 'Pending';
     }
 
     return ReferralDetail(
@@ -362,7 +367,8 @@ class _ReferralDetailScreenState
                     isLoading: _triggeringStage2,
                     onTap: _triggerStage2,
                   )
-                else if (detail.stage2Status == 'Generating')
+                else if (detail.stage2Status == 'Generating' ||
+                         detail.stage2Status == 'Pending')
                   _GeneratingCard()
                 else ...[
                   ...stage2.map((article) => _ArticleCard(
