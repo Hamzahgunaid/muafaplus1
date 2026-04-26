@@ -161,17 +161,15 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 placeholder="doctor@hospital.ye"
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all border focus:border-navy-600"
                 style={{
                   background: "white",
-                  border: "1.5px solid #EEF0F5",
+                  borderColor: "#EEF0F5",
                   color: "#0E1726",
                   fontFamily: "IBM Plex Sans Arabic, system-ui",
                   direction: "ltr",
                   textAlign: "right",
                 }}
-                onFocus={e  => (e.target.style.borderColor = "#1E3A72")}
-                onBlur={e   => (e.target.style.borderColor = "#EEF0F5")}
                 {...register("email", {
                   required: "البريد الإلكتروني مطلوب",
                   pattern:  { value: /\S+@\S+\.\S+/, message: "صيغة البريد غير صحيحة" },
@@ -193,18 +191,15 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all border focus:border-navy-600"
                 style={{
                   background: "white",
-                  border: "1.5px solid #EEF0F5",
+                  borderColor: "#EEF0F5",
                   color: "#0E1726",
                   direction: "ltr",
                 }}
-                onFocus={e  => (e.target.style.borderColor = "#1E3A72")}
-                onBlur={e   => (e.target.style.borderColor = "#EEF0F5")}
                 {...register("password", {
-                  required:  "كلمة المرور مطلوبة",
-                  minLength: { value: 8, message: "8 أحرف على الأقل" },
+                  required: "كلمة المرور مطلوبة",
                 })}
               />
               {errors.password && (
