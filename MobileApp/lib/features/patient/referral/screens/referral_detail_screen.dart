@@ -384,6 +384,27 @@ class _ReferralDetailScreenState
           },
         ),
 
+        const SizedBox(height: 16),
+
+        // ── Feedback button ───────────────────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: () => context.push('/feedback/${detail.id}'),
+            icon: const Icon(Icons.star_outline_rounded,
+              color: AppColors.navy600, size: 20),
+            label: Text('تقييم المحتوى',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 14, fontWeight: FontWeight.w600,
+                color: AppColors.navy600)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.navy600),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12))),
+          ),
+        ),
+
         const SizedBox(height: 32),
 
         // ── Disclaimer ────────────────────────────────────────────────────
