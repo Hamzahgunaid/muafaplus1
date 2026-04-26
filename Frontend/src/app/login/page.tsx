@@ -63,8 +63,8 @@ export default function LoginPage() {
           <img
             src="/muafa-logo.png"
             alt="معافى+"
-            className="h-20 w-auto object-contain"
-            style={{ maxWidth: "220px" }}
+            className="h-24 w-auto object-contain"
+            style={{ maxWidth: "260px" }}
           />
         </div>
 
