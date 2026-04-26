@@ -60,10 +60,12 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="bg-white rounded-2xl p-3 shadow-lg">
-            <span className="font-bold text-xl" style={{ color: "#1E3A72", fontFamily: "IBM Plex Sans Arabic, system-ui" }}>
-              معافى+
-            </span>
+          <div className="bg-white rounded-2xl px-4 py-2 shadow-lg">
+            <img
+              src="/muafa-logo.png"
+              alt="معافى+"
+              className="h-8 w-auto object-contain"
+            />
           </div>
         </div>
 
