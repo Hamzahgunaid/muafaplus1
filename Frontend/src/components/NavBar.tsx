@@ -1,104 +1,131 @@
-"use client";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useAuthStore } from "@/lib/store";
+'use client'
 
-type NavLink = { label: string; href: string };
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuthStore } from '@/lib/store'
+
+type NavLink = { label: string; href: string }
 
 function getNavLinks(role: string | null): NavLink[] {
   switch (role) {
-    case "SuperAdmin":
-    case "HospitalAdmin":
+    case 'SuperAdmin':
+    case 'HospitalAdmin':
       return [
-        { label: "الرئيسية",            href: "/dashboard" },
-        { label: "الإحالات",            href: "/referrals" },
-        { label: "سيناريوهات الاختبار", href: "/test-scenarios" },
-        { label: "الإدارة",             href: "/admin" },
-      ];
-    case "Physician":
+        { label: 'الرئيسية',            href: '/dashboard' },
+        { label: 'الإحالات',            href: '/referrals' },
+        { label: 'سيناريوهات الاختبار', href: '/test-scenarios' },
+        { label: 'الإدارة',             href: '/admin' },
+      ]
+    case 'Physician':
       return [
-        { label: "الرئيسية",            href: "/dashboard" },
-        { label: "الإحالات",            href: "/referrals" },
-        { label: "سيناريوهات الاختبار", href: "/test-scenarios" },
-      ];
-    case "Assistant":
+        { label: 'الرئيسية',            href: '/dashboard' },
+        { label: 'الإحالات',            href: '/referrals' },
+        { label: 'سيناريوهات الاختبار', href: '/test-scenarios' },
+      ]
+    case 'Assistant':
       return [
-        { label: "الرئيسية", href: "/dashboard" },
-        { label: "الإحالات", href: "/referrals" },
-      ];
+        { label: 'الرئيسية', href: '/dashboard' },
+        { label: 'الإحالات', href: '/referrals' },
+      ]
     default:
-      return [
-        { label: "الرئيسية", href: "/dashboard" },
-      ];
+      return [{ label: 'الرئيسية', href: '/dashboard' }]
   }
 }
 
 export default function NavBar() {
-  const pathname = usePathname();
-  const router   = useRouter();
-  const { physician, fullName, role, logout } = useAuthStore();
+  const pathname = usePathname()
+  const router   = useRouter()
+  const { physician, fullName, role, logout } = useAuthStore()
 
-  const handleLogout = () => { logout(); router.push("/login"); };
+  const handleLogout = () => { logout(); router.push('/login') }
 
-  const navLinks = getNavLinks(role);
-  const displayName = fullName ?? physician?.fullName ?? "";
-  const displaySub  = role === "Physician" || role === "Assistant"
-    ? (physician?.specialty ?? "")
-    : role ?? "";
+  const navLinks   = getNavLinks(role)
+  const displayName = fullName ?? physician?.fullName ?? ''
+  const displaySub  = role === 'Physician' || role === 'Assistant'
+    ? (physician?.specialty ?? '')
+    : role ?? ''
+
+  const initials = displayName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .slice(0, 2) || 'م'
 
   return (
-    <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-      {/* Brand + nav links */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white font-bold text-sm">
-            م+
-          </div>
-          {displayName && (
-            <div>
-              <span className="font-semibold text-gray-900 text-sm">{displayName}</span>
-              <span className="text-gray-400 text-xs block">{displaySub}</span>
-            </div>
-          )}
+    <nav
+      className="sticky top-0 z-50 bg-white border-b"
+      style={{ borderColor: '#EEF0F5', height: '64px', fontFamily: 'IBM Plex Sans Arabic, system-ui' }}
+      dir="rtl"
+    >
+      <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+
+        {/* Logo */}
+        <div className="flex items-center">
+          <img src="/muafa-logo.png" alt="معافى+" className="h-10 w-auto object-contain" />
         </div>
 
-        <nav className="flex items-center gap-1">
-          {navLinks.map(({ label, href }) => {
-            const active = pathname === href || pathname.startsWith(href + "/");
+        {/* Nav links */}
+        <div className="flex items-center gap-8">
+          {navLinks.map(link => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href + '/')
             return (
               <Link
-                key={href}
-                href={href}
-                className={`px-3 py-1.5 rounded-lg text-sm transition ${
-                  active
-                    ? "bg-brand-50 text-brand-700 font-medium"
-                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                }`}
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium pb-1 transition-colors"
+                style={{
+                  color: isActive ? '#1E3A72' : '#5A6478',
+                  borderBottom: isActive ? '2px solid #1E3A72' : '2px solid transparent',
+                  fontFamily: 'IBM Plex Sans Arabic, system-ui',
+                }}
               >
-                {label}
+                {link.label}
               </Link>
-            );
+            )
           })}
-        </nav>
-      </div>
+        </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-4">
-        {role !== null && (
-          <Link
-            href="/referrals/new"
-            className="px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-800 transition"
+        {/* User area */}
+        <div className="flex items-center gap-3">
+          {displayName && (
+            <div className="text-right">
+              <div className="text-sm font-semibold" style={{ color: '#0E1726' }}>
+                {displayName}
+              </div>
+              <div className="text-xs" style={{ color: '#5A6478' }}>
+                {displaySub}
+              </div>
+            </div>
+          )}
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+            style={{ background: 'linear-gradient(135deg, #1E3A72, #17305F)' }}
           >
-            + مريض جديد
-          </Link>
-        )}
-        <button
-          onClick={handleLogout}
-          className="text-gray-400 hover:text-gray-700 text-sm transition"
-        >
-          خروج
-        </button>
+            {initials}
+          </div>
+          {role !== null && (
+            <Link
+              href="/referrals/new"
+              className="text-sm font-semibold px-4 py-2 rounded-xl text-white transition-all"
+              style={{ background: '#1E3A72', fontFamily: 'IBM Plex Sans Arabic, system-ui' }}
+            >
+              + مريض جديد
+            </Link>
+          )}
+          <button
+            onClick={handleLogout}
+            className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+            style={{
+              color: '#5A6478',
+              background: '#F6F7FB',
+              border: '1px solid #EEF0F5',
+              fontFamily: 'IBM Plex Sans Arabic, system-ui',
+            }}
+          >
+            خروج
+          </button>
+        </div>
       </div>
-    </header>
-  );
+    </nav>
+  )
 }

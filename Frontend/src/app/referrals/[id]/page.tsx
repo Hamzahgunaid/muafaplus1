@@ -30,6 +30,14 @@ const RISK_LABEL: Record<string, string> = {
   CRITICAL: "حرج",
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  Created:          "تم الإنشاء",
+  Stage1Delivered:  "تم التسليم",
+  Stage2Requested:  "جارٍ التوليد",
+  Stage2Complete:   "مكتمل",
+  FeedbackSubmitted: "تم التقييم",
+};
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReferralDetailPage() {
@@ -186,7 +194,7 @@ function InfoCard({ referral: r }: { referral: ReferralResponse }) {
           className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-ink-100 text-ink-500"
           style={{ fontFamily: "IBM Plex Sans Arabic, system-ui" }}
         >
-          {r.status}
+          {STATUS_LABEL[r.status] ?? r.status}
         </span>
       </div>
 
