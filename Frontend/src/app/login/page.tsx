@@ -63,8 +63,7 @@ export default function LoginPage() {
           <img
             src="/muafa-logo.png"
             alt="معافى+"
-            className="h-10 w-auto object-contain"
-            style={{ filter: "brightness(0) invert(1)" }}
+            className="h-14 w-auto object-contain"
           />
         </div>
 
