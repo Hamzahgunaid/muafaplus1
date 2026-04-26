@@ -153,7 +153,7 @@ export default function DashboardPage() {
                 <tbody className="divide-y divide-gray-50">
                   {sessions.map((s) => (
                     <tr key={s.sessionId} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 text-gray-600 font-mono text-xs">{s.patientId.slice(0, 8)}…</td>
+                      <td className="px-6 py-4 text-gray-600 font-mono text-xs">{(s.patientId ?? '').slice(0, 8)}…</td>
                       <td className="px-6 py-4">
                         {s.riskLevel ? (
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs border font-medium ${RISK_CLASS[s.riskLevel]}`}>
