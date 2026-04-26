@@ -21,6 +21,30 @@ const RISK_LABEL: Record<string, string> = {
   CRITICAL: "حرج",
 };
 
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'Created':          return 'تم الإنشاء'
+    case 'Stage1Delivered':  return 'تم التسليم'
+    case 'Stage2Requested':  return 'جارٍ التوليد'
+    case 'Stage2Complete':   return 'مكتمل'
+    case 'FeedbackSubmitted': return 'تم التقييم'
+    default:                 return status
+  }
+}
+
+const getStatusStyle = (status: string): React.CSSProperties => {
+  switch (status) {
+    case 'Stage2Complete':
+    case 'FeedbackSubmitted':
+      return { background: '#E6F4EC', color: '#197540' }
+    case 'Stage1Delivered':
+    case 'Stage2Requested':
+      return { background: '#EEF1F7', color: '#1E3A72' }
+    default:
+      return { background: '#F6F7FB', color: '#5A6478' }
+  }
+}
+
 export default function ReferralsPage() {
   const router  = useRouter();
   const { isLoggedIn } = useAuthStore();
@@ -150,10 +174,10 @@ function ReferralCard({ referral: r }: { referral: ReferralResponse }) {
             )}
 
             <span
-              className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-ink-100 text-ink-500"
-              style={{ fontFamily: "IBM Plex Sans Arabic, system-ui" }}
+              className="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+              style={{ ...getStatusStyle(r.status), fontFamily: "IBM Plex Sans Arabic, system-ui" }}
             >
-              {r.status}
+              {getStatusLabel(r.status)}
             </span>
           </div>
 
@@ -171,8 +195,8 @@ function ReferralCard({ referral: r }: { referral: ReferralResponse }) {
         {/* Action */}
         <Link
           href={`/referrals/${r.referralId}`}
-          className="shrink-0 text-navy-600 text-xs font-semibold hover:underline"
-          style={{ fontFamily: "IBM Plex Sans Arabic, system-ui" }}
+          className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+          style={{ background: '#EEF1F7', color: '#1E3A72', fontFamily: "IBM Plex Sans Arabic, system-ui" }}
         >
           عرض التفاصيل
         </Link>
