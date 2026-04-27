@@ -7,8 +7,13 @@ import '../../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class ArticleReaderScreen extends ConsumerStatefulWidget {
+  final String referralId;
   final String articleId;
-  const ArticleReaderScreen({super.key, required this.articleId});
+  const ArticleReaderScreen({
+    super.key,
+    required this.referralId,
+    required this.articleId,
+  });
 
   @override
   ConsumerState<ArticleReaderScreen> createState() =>
@@ -24,6 +29,8 @@ class _ArticleReaderScreenState
   String? _error;
   double _scrollDepth = 0;
   final _scrollController = ScrollController();
+
+  String get referralId => widget.referralId;
 
   @override
   void initState() {
@@ -58,20 +65,33 @@ class _ArticleReaderScreenState
           'Authorization': 'Bearer $token',
         },
       ));
-      final response = await dio.get('/articles/${widget.articleId}');
-      print('DEBUG article response: ${response.data}');
-      final data = response.data['data'] ?? response.data;
-      setState(() {
-        _title   = data['title'] ?? data['articleTitle'] ?? 'مقال طبي';
-        _content = data['content'] ?? data['articleContent'] ?? data['body'] ?? '';
-        _loading = false;
-      });
+      final response = await dio.get('/referrals/$referralId/articles');
+      print('DEBUG articles for reader: ${response.data}');
+      final list = response.data['data'] as List? ?? [];
+
+      Map<String, dynamic>? article;
+      for (final a in list) {
+        if ((a['articleId'] ?? a['id'] ?? '') == widget.articleId) {
+          article = a as Map<String, dynamic>;
+          break;
+        }
+      }
+      article ??= list.isNotEmpty ? list.first as Map<String, dynamic> : null;
+
+      if (article != null) {
+        setState(() {
+          _title   = article!['title'] ?? article['articleTitle'] ??
+            article['heading'] ?? 'مقال طبي';
+          _content = article['content_ar'] ?? article['content'] ??
+            article['articleContent'] ?? article['body'] ?? '';
+          _loading = false;
+        });
+      } else {
+        setState(() { _error = 'المقال غير موجود'; _loading = false; });
+      }
     } catch (e) {
       print('DEBUG article load error: $e');
-      setState(() {
-        _error   = 'تعذّر تحميل المقال';
-        _loading = false;
-      });
+      setState(() { _error = 'تعذّر تحميل المقال'; _loading = false; });
     }
   }
 
@@ -113,33 +133,35 @@ class _ArticleReaderScreenState
             ? Center(child: Text(_error!,
                 style: GoogleFonts.ibmPlexSansArabic(
                   color: AppColors.ink500)))
-            : Markdown(
+            : SingleChildScrollView(
                 controller: _scrollController,
-                data: _content ?? '',
                 padding: const EdgeInsets.all(20),
-                styleSheet: MarkdownStyleSheet(
-                  h1: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 20, fontWeight: FontWeight.w700,
-                    color: AppColors.navy600),
-                  h2: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 17, fontWeight: FontWeight.w700,
-                    color: AppColors.navy600),
-                  h3: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 15, fontWeight: FontWeight.w600,
-                    color: AppColors.ink900),
-                  p: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 15, color: AppColors.ink700,
-                    height: 1.8),
-                  listBullet: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 15, color: AppColors.ink700),
-                  strong: GoogleFonts.ibmPlexSansArabic(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink900),
-                  blockquoteDecoration: BoxDecoration(
-                    color: AppColors.navy600.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: const Border(left: BorderSide(
-                      color: AppColors.orange500, width: 3))),
+                child: MarkdownBody(
+                  data: _content ?? '',
+                  styleSheet: MarkdownStyleSheet(
+                    h1: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 20, fontWeight: FontWeight.w700,
+                      color: AppColors.navy600),
+                    h2: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 17, fontWeight: FontWeight.w700,
+                      color: AppColors.navy600),
+                    h3: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 15, fontWeight: FontWeight.w600,
+                      color: AppColors.ink900),
+                    p: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 15, color: AppColors.ink700,
+                      height: 1.8),
+                    listBullet: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 15, color: AppColors.ink700),
+                    strong: GoogleFonts.ibmPlexSansArabic(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink900),
+                    blockquoteDecoration: BoxDecoration(
+                      color: AppColors.navy600.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: const Border(left: BorderSide(
+                        color: AppColors.orange500, width: 3))),
+                  ),
                 ),
               ),
         bottomNavigationBar: Container(
@@ -157,13 +179,13 @@ class _ArticleReaderScreenState
                   icon: Icons.thumb_up_outlined,
                   label: 'مفيد',
                   color: AppColors.green500,
-                  onTap: () => _submitReaction('Like'),
+                  onTap: () => _submitReaction('like'),
                 ),
                 _ReactionButton(
                   icon: Icons.thumb_down_outlined,
                   label: 'يحتاج تحسين',
                   color: AppColors.riskHighText,
-                  onTap: () => _submitReaction('Dislike'),
+                  onTap: () => _submitReaction('dislike'),
                 ),
               ],
             ),
@@ -183,16 +205,20 @@ class _ArticleReaderScreenState
           'Authorization': 'Bearer $token',
         },
       ));
-      await dio.post('/articles/${widget.articleId}/reaction',
-        data: {'reaction': reaction});
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('شكراً على تقييمك',
-            style: GoogleFonts.ibmPlexSansArabic()),
-          backgroundColor: AppColors.green500));
-      }
+      // POST /articles/{articleId}/engagement with eventType "like" or "dislike"
+      await dio.post('/articles/${widget.articleId}/engagement',
+        data: {
+          'referralId': widget.referralId,
+          'eventType': reaction,
+        });
     } catch (e) {
       print('DEBUG reaction error: $e');
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('شكراً على تقييمك',
+          style: GoogleFonts.ibmPlexSansArabic()),
+        backgroundColor: AppColors.green500));
     }
   }
 }

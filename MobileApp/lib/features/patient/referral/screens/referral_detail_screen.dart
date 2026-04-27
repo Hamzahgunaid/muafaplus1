@@ -21,12 +21,14 @@ class ArticleItem {
     required this.status,
   });
 
-  factory ArticleItem.fromJson(Map<String, dynamic> j) => ArticleItem(
-    id: j['articleId'] ?? j['id'] ?? '',
-    title: j['title'] ?? '',
-    content: j['content'] ?? '',
-    status: j['status'] ?? 'Ready',
-  );
+  factory ArticleItem.fromJson(Map<String, dynamic> j) {
+    return ArticleItem(
+      id: j['articleId'] ?? j['id'] ?? '',
+      title: j['title'] ?? j['articleTitle'] ?? j['heading'] ?? 'مقال طبي',
+      content: j['content_ar'] ?? j['content'] ?? j['articleContent'] ?? j['body'] ?? '',
+      status: j['status'] ?? j['generationStatus'] ?? 'Ready',
+    );
+  }
 
   bool get isReady => status == 'Ready';
 }
@@ -53,13 +55,18 @@ class ReferralDetail {
   factory ReferralDetail.fromJson(Map<String, dynamic> j) {
     final status = j['status'] as String? ?? '';
 
+    // Stage 2 can only be triggered when Stage 1 is fully delivered.
+    // Stage2Requested means it's queued in Hangfire — treat as Generating.
     String stage2Status;
     if (status == 'Stage2Complete') {
       stage2Status = 'Complete';
-    } else if (status == 'Stage2Generating') {
+    } else if (status == 'Stage2Requested') {
       stage2Status = 'Generating';
-    } else {
+    } else if (status == 'Stage1Complete' || status == 'Stage1Delivered') {
       stage2Status = 'NotRequested';
+    } else {
+      // Created or any other pre-Stage1 status — Stage 1 not ready yet
+      stage2Status = 'Pending';
     }
 
     return ReferralDetail(
@@ -345,7 +352,7 @@ class _ReferralDetailScreenState
                   _ArticleCard(
                     article: summary,
                     isStage1: true,
-                    onTap: () => context.push('/article/${summary.id}'),
+                    onTap: () => context.push('/article/${detail.id}/${summary.id}'),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -360,20 +367,42 @@ class _ReferralDetailScreenState
                     isLoading: _triggeringStage2,
                     onTap: _triggerStage2,
                   )
-                else if (detail.stage2Status == 'Generating')
+                else if (detail.stage2Status == 'Generating' ||
+                         detail.stage2Status == 'Pending')
                   _GeneratingCard()
                 else ...[
                   ...stage2.map((article) => _ArticleCard(
                     article: article,
                     isStage1: false,
                     onTap: article.isReady
-                      ? () => context.push('/article/${article.id}')
+                      ? () => context.push('/article/${detail.id}/${article.id}')
                       : null,
                   )),
                 ],
               ],
             );
           },
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Feedback button ───────────────────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: () => context.push('/feedback/${detail.id}'),
+            icon: const Icon(Icons.star_outline_rounded,
+              color: AppColors.navy600, size: 20),
+            label: Text('تقييم المحتوى',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 14, fontWeight: FontWeight.w600,
+                color: AppColors.navy600)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.navy600),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12))),
+          ),
         ),
 
         const SizedBox(height: 32),

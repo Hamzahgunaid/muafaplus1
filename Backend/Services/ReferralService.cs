@@ -239,18 +239,27 @@ public class ReferralService
             .OrderByDescending(a => a.CreatedAt)
             .FirstOrDefaultAsync();
 
-        var summaryText = summaryArticle?.Content ?? string.Empty;
-        var phone       = referral.PatientAccess?.PhoneNumber ?? string.Empty;
-        var accessCode  = referral.PatientAccess?.AccessCode  ?? string.Empty;
-        var physician   = referral.PhysicianId;
-        var riskLevel   = referral.RiskLevel ?? "Unknown";
-        var now         = DateTime.UtcNow;
+        var phone      = referral.PatientAccess?.PhoneNumber ?? string.Empty;
+        var accessCode = referral.PatientAccess?.AccessCode  ?? string.Empty;
+        var now        = DateTime.UtcNow;
+
+        // Resolve patient display name — respect PatientNamePolicy
+        var rawPatientName = referral.Profile?.PatientName ?? string.Empty;
+        var namePolicy     = referral.Tenant?.Settings?.PatientNamePolicy;
+        var patientName    = namePolicy == PatientNamePolicy.Hide ? "مريض" : rawPatientName;
+        if (string.IsNullOrWhiteSpace(patientName)) patientName = "مريض";
+
+        // Resolve physician display name from Users table
+        var physicianUser = Guid.TryParse(referral.PhysicianId, out var physicianGuid)
+            ? await _db.Users.FirstOrDefaultAsync(u => u.UserId == physicianGuid)
+            : null;
+        var physicianName = physicianUser?.FullName ?? referral.PhysicianId;
 
         if (referral.WhatsAppDelivery)
         {
-            // Step 4a: Send summary article (Message 1)
+            // Step 4a: Send health notification (Message 1 — muafa_health_notification)
             var (ok1, err1) = await _whatsApp.SendSummaryMessageAsync(
-                phone, summaryText, physician, riskLevel);
+                phone, patientName, physicianName);
 
             await LogMessageAsync(
                 referral, MessageType.WhatsAppSummary, phone,
@@ -259,11 +268,9 @@ public class ReferralService
             // Small gap between messages
             Thread.Sleep(2000);
 
-            // Step 4b: Send access code (Message 2)
-            var patientName = referral.Profile?.PatientName ?? string.Empty;
-
+            // Step 4b: Send access code (Message 2 — muafa_access_code1)
             var (ok2, err2) = await _whatsApp.SendAccessCodeAsync(
-                phone, accessCode, patientName);
+                phone, accessCode);
 
             await LogMessageAsync(
                 referral, MessageType.WhatsAppCode, phone,
@@ -272,7 +279,7 @@ public class ReferralService
         else
         {
             // Step 5: SMS fallback
-            var (okSms, errSms) = await _whatsApp.SendSmsAsync(phone, accessCode, physician);
+            var (okSms, errSms) = await _whatsApp.SendSmsAsync(phone, accessCode, physicianName);
 
             await LogMessageAsync(
                 referral, MessageType.SMS, phone,
@@ -442,6 +449,7 @@ public class ReferralService
         {
             ArticleId    = a.ArticleId,
             ArticleType  = a.ArticleType,
+            Title        = ExtractMarkdownTitle(a.Content),
             ContentAr    = a.Content,
             CoverageCodes = a.CoverageCodes,
             WordCount    = a.WordCount,
@@ -661,5 +669,17 @@ public class ReferralService
                 FeedbackSubmittedAt = engagement.FeedbackSubmittedAt
             }
         };
+    }
+
+    private static string ExtractMarkdownTitle(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return string.Empty;
+        foreach (var line in content.Split('\n'))
+        {
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("# "))
+                return trimmed[2..].Trim();
+        }
+        return string.Empty;
     }
 }

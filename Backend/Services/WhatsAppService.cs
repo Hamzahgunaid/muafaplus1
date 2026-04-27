@@ -5,13 +5,9 @@ using System.Text.Json;
 namespace MuafaPlus.Services;
 
 /// <summary>
-/// Phase 2: Sends WhatsApp messages via Meta WhatsApp Cloud API (v21.0).
+/// Sends WhatsApp messages via Meta WhatsApp Cloud API (v21.0).
+/// Uses two approved templates: muafa_health_notification + muafa_access_code1.
 /// All methods return (bool Success, string? ErrorMessage) — never throw.
-///
-/// TestMode = true (default on Railway until production approval):
-///   Sends the approved hello_world template instead of free-form text.
-///   Free-form text requires an approved template or an active 24-hour
-///   conversation window with the recipient.
 /// </summary>
 public class WhatsAppService
 {
@@ -19,9 +15,8 @@ public class WhatsAppService
     private readonly IConfiguration    _config;
     private readonly ILogger<WhatsAppService> _logger;
 
-    private string PhoneNumberId      => _config["WhatsApp:PhoneNumberId"] ?? "1112172131979263";
-    private string AccessToken        => _config["WhatsApp:AccessToken"]   ?? string.Empty;
-    private bool   TestMode           => _config.GetValue<bool>("WhatsApp:TestMode", true);
+    private string PhoneNumberId => _config["WhatsApp:PhoneNumberId"] ?? "1112172131979263";
+    private string AccessToken   => _config["WhatsApp:AccessToken"]   ?? string.Empty;
 
     private static readonly JsonSerializerOptions _jsonOpts =
         new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
@@ -38,67 +33,91 @@ public class WhatsAppService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Message 1 — Summary article
+    // Message 1 — Health notification (muafa_health_notification)
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Sends the full Stage 1 summary article to the patient's WhatsApp.
-    /// In TestMode uses the approved hello_world template (test numbers only
-    /// support approved templates to non-verified recipients).
+    /// Sends the muafa_health_notification template.
+    /// Body parameters: {{1}} patientName, {{2}} physicianName, {{3}} appLink.
     /// </summary>
     public async Task<(bool Success, string? ErrorMessage)> SendSummaryMessageAsync(
         string toPhone,
-        string summaryText,
-        string physicianName,
-        string riskLevel)
+        string patientName,
+        string physicianName)
     {
-        if (TestMode)
+        const string appLink = "https://muafaplus1.vercel.app";
+
+        var payload = new
         {
-            _logger.LogInformation(
-                "WHATSAPP TEST MODE: Would send summary to {Phone}: {Preview}",
-                toPhone,
-                summaryText.Length > 100 ? summaryText[..100] + "…" : summaryText);
+            messaging_product = "whatsapp",
+            to   = toPhone,
+            type = "template",
+            template = new
+            {
+                name     = "muafa_health_notification",
+                language = new { code = "ar" },
+                components = new[]
+                {
+                    new
+                    {
+                        type = "body",
+                        parameters = new[]
+                        {
+                            new { type = "text", text = patientName },
+                            new { type = "text", text = physicianName },
+                            new { type = "text", text = appLink }
+                        }
+                    }
+                }
+            }
+        };
 
-            return await SendTemplateAsync(toPhone, "hello_world", "en_US");
-        }
+        _logger.LogInformation(
+            "WhatsApp: sending muafa_health_notification to {Phone} — patient:{Patient}",
+            toPhone, patientName);
 
-        var body = $"🏥 معافى بلس — تثقيفك الصحي\n\n" +
-                   $"من: د. {physicianName}\n" +
-                   $"مستوى الخطر: {riskLevel}\n\n" +
-                   $"{summaryText}\n\n" +
-                   $"📱 لقراءة المقالات التفصيلية، حمّل تطبيق معافى+\n" +
-                   $"⚠️ هذا المحتوى للتثقيف الصحي فقط وليس استشارة طبية.";
-
-        return await SendTextAsync(toPhone, body);
+        return await PostToApiAsync(payload);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Message 2 — Access code
+    // Message 2 — Access code (muafa_access_code1)
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Sends the 4-digit access code as a standalone WhatsApp message.
-    /// In TestMode uses the approved hello_world template.
+    /// Sends the muafa_access_code1 template.
+    /// Body parameter: {{1}} accessCode (4-digit code).
     /// </summary>
     public async Task<(bool Success, string? ErrorMessage)> SendAccessCodeAsync(
         string toPhone,
-        string accessCode,
-        string patientName)
+        string accessCode)
     {
-        if (TestMode)
+        var payload = new
         {
-            _logger.LogInformation(
-                "WHATSAPP TEST MODE: Would send access code {Code} to {Phone}",
-                accessCode, toPhone);
+            messaging_product = "whatsapp",
+            to   = toPhone,
+            type = "template",
+            template = new
+            {
+                name     = "muafa_access_code1",
+                language = new { code = "ar" },
+                components = new[]
+                {
+                    new
+                    {
+                        type = "body",
+                        parameters = new[]
+                        {
+                            new { type = "text", text = accessCode }
+                        }
+                    }
+                }
+            }
+        };
 
-            return await SendTemplateAsync(toPhone, "hello_world", "en_US");
-        }
+        _logger.LogInformation(
+            "WhatsApp: sending muafa_access_code1 to {Phone}", toPhone);
 
-        var body = $"🔐 رمز الوصول الخاص بك في تطبيق معافى+:\n\n" +
-                   $"*{accessCode}*\n\n" +
-                   $"أدخل هذا الرمز مع رقم هاتفك للوصول إلى محتواك الصحي.";
-
-        return await SendTextAsync(toPhone, body);
+        return await PostToApiAsync(payload);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -107,18 +126,10 @@ public class WhatsAppService
 
     /// <summary>
     /// Sends a plain text message to a WhatsApp number.
-    /// Used for staff onboarding notifications.
+    /// Used for staff onboarding notifications. Requires an active 24-hour window.
     /// </summary>
     public async Task SendTextMessageAsync(string toPhone, string message)
     {
-        if (TestMode)
-        {
-            _logger.LogInformation(
-                "WhatsApp TestMode — text message to {Phone}: {Message}",
-                toPhone, message);
-            return;
-        }
-
         await SendTextAsync(toPhone, message);
     }
 
@@ -159,24 +170,6 @@ public class WhatsAppService
         return await PostToApiAsync(payload);
     }
 
-    private async Task<(bool Success, string? ErrorMessage)> SendTemplateAsync(
-        string toPhone, string templateName, string languageCode)
-    {
-        var payload = new
-        {
-            messaging_product = "whatsapp",
-            to   = toPhone,
-            type = "template",
-            template = new
-            {
-                name     = templateName,
-                language = new { code = languageCode }
-            }
-        };
-
-        return await PostToApiAsync(payload);
-    }
-
     private async Task<(bool Success, string? ErrorMessage)> PostToApiAsync(object payload)
     {
         try
@@ -205,8 +198,8 @@ public class WhatsAppService
             }
 
             _logger.LogInformation(
-                "WhatsApp message sent — to:{Phone} status:{Status}",
-                payload.ToString(), (int)response.StatusCode);
+                "WhatsApp message sent to {Phone} — status:{Status}",
+                toPhone, (int)response.StatusCode);
 
             return (true, null);
         }

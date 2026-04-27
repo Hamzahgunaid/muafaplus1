@@ -61,10 +61,10 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <img
-            src="/muafa-logo-white.png"
+            src="/muafa-logo.png"
             alt="معافى+"
-            className="h-32 w-auto object-contain"
-            style={{ maxWidth: "340px" }}
+            className="h-24 w-auto object-contain"
+            style={{ maxWidth: "260px" }}
           />
         </div>
 
