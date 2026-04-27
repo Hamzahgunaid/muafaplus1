@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
@@ -93,6 +93,9 @@ export default function NewReferralPage() {
     setApiError(null);
     setSubmitting(true);
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+
       const res = await referralApi.createReferral({
         patientPhone:            values.patientPhone,
         patientNameOverride:     values.patientName || undefined,
@@ -105,14 +108,21 @@ export default function NewReferralPage() {
         notificationDelayHours:  Number(values.notificationDelayHours),
         whatsAppDelivery:        values.whatsAppDelivery,
       });
+
+      clearTimeout(timeout);
+
       if (res.success && res.data) {
         setSuccess(res.data);
       } else {
-        setApiError(res.error ?? "حدث خطأ غير متوقع");
+        setApiError(res.error ?? "حدث خطأ غير متوقع — يرجى المحاولة مرة أخرى");
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "خطأ في الاتصال بالخادم";
-      setApiError(msg);
+      if (e instanceof Error && e.name === 'AbortError') {
+        setApiError("انتهت مهلة الطلب — الخادم لم يستجب خلال 60 ثانية. يرجى المحاولة مرة أخرى.");
+      } else {
+        const msg = e instanceof Error ? e.message : "خطأ في الاتصال بالخادم";
+        setApiError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -506,7 +516,7 @@ function F({
   );
 }
 
-// FI = focusable input — handles border color transitions on focus/blur
+// FI = focusable input — mutates border via ref to avoid SSR hydration mismatch
 const FI = ({
   as: Tag = "input",
   hasError,
@@ -518,13 +528,16 @@ const FI = ({
   children?: React.ReactNode;
   [key: string]: unknown;
 }) => {
-  const [focused, setFocused] = useState(false);
-  const borderColor = hasError ? '#F5B8B8' : focused ? '#1E3A72' : '#EEF0F5';
+  const ref = useRef<HTMLElement>(null);
+
+  const baseBorder  = hasError ? '#F5B8B8' : '#EEF0F5';
+  const focusBorder = hasError ? '#F5B8B8' : '#1E3A72';
+
   const sharedStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px 16px',
     borderRadius: '12px',
-    border: `1.5px solid ${borderColor}`,
+    border: `1.5px solid ${baseBorder}`,
     fontSize: '14px',
     outline: 'none',
     background: hasError ? '#FBE5E5' : 'white',
@@ -534,13 +547,13 @@ const FI = ({
   };
 
   const handleFocus = (e: React.FocusEvent) => {
-    setFocused(true);
+    if (ref.current) ref.current.style.borderColor = focusBorder;
     if (typeof (props as { onFocus?: (e: React.FocusEvent) => void }).onFocus === 'function') {
       (props as { onFocus: (e: React.FocusEvent) => void }).onFocus(e);
     }
   };
   const handleBlur = (e: React.FocusEvent) => {
-    setFocused(false);
+    if (ref.current) ref.current.style.borderColor = baseBorder;
     if (typeof (props as { onBlur?: (e: React.FocusEvent) => void }).onBlur === 'function') {
       (props as { onBlur: (e: React.FocusEvent) => void }).onBlur(e);
     }
@@ -551,6 +564,7 @@ const FI = ({
 
   return (
     <Tag
+      ref={ref as React.RefObject<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>}
       style={sharedStyle}
       onFocus={handleFocus}
       onBlur={handleBlur}
