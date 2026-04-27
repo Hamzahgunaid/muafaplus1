@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
@@ -36,8 +37,18 @@ export default function NavBar() {
   const pathname = usePathname()
   const router   = useRouter()
   const { physician, fullName, role, logout } = useAuthStore()
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => { setHydrated(true) }, [])
 
   const handleLogout = () => { logout(); router.push('/login') }
+
+  if (!hydrated) return (
+    <nav
+      className="sticky top-0 z-50 bg-white border-b"
+      style={{ borderColor: '#EEF0F5', height: '64px' }}
+    />
+  )
 
   const navLinks   = getNavLinks(role)
   const displayName = fullName ?? physician?.fullName ?? ''
