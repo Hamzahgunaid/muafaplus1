@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
@@ -516,7 +516,7 @@ function F({
   );
 }
 
-// FI = focusable input — mutates border via ref to avoid SSR hydration mismatch
+// FI = focusable input — zero hooks, no SSR/client mismatch
 const FI = ({
   as: Tag = "input",
   hasError,
@@ -528,46 +528,29 @@ const FI = ({
   children?: React.ReactNode;
   [key: string]: unknown;
 }) => {
-  const ref = useRef<HTMLElement>(null);
-
-  const baseBorder  = hasError ? '#F5B8B8' : '#EEF0F5';
-  const focusBorder = hasError ? '#F5B8B8' : '#1E3A72';
-
-  const sharedStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    border: `1.5px solid ${baseBorder}`,
-    fontSize: '14px',
-    outline: 'none',
-    background: hasError ? '#FBE5E5' : 'white',
-    color: '#0E1726',
-    fontFamily: "IBM Plex Sans Arabic, system-ui",
-    transition: 'border-color 0.15s',
-  };
-
-  const handleFocus = (e: React.FocusEvent) => {
-    if (ref.current) ref.current.style.borderColor = focusBorder;
-    if (typeof (props as { onFocus?: (e: React.FocusEvent) => void }).onFocus === 'function') {
-      (props as { onFocus: (e: React.FocusEvent) => void }).onFocus(e);
-    }
-  };
-  const handleBlur = (e: React.FocusEvent) => {
-    if (ref.current) ref.current.style.borderColor = baseBorder;
-    if (typeof (props as { onBlur?: (e: React.FocusEvent) => void }).onBlur === 'function') {
-      (props as { onBlur: (e: React.FocusEvent) => void }).onBlur(e);
-    }
-  };
-
   const { hasError: _h, ...rest } = { hasError, ...props };
   void _h;
 
   return (
     <Tag
-      ref={ref as React.RefObject<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>}
-      style={sharedStyle}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
+      style={{
+        width: '100%',
+        padding: '12px 16px',
+        borderRadius: '12px',
+        border: `1.5px solid ${hasError ? '#F5B8B8' : '#EEF0F5'}`,
+        fontSize: '14px',
+        outline: 'none',
+        background: hasError ? '#FBE5E5' : 'white',
+        color: '#0E1726',
+        fontFamily: "IBM Plex Sans Arabic, system-ui",
+        transition: 'border-color 0.15s',
+      }}
+      onFocus={(e: React.FocusEvent<HTMLElement>) => {
+        e.currentTarget.style.borderColor = hasError ? '#F5B8B8' : '#1E3A72';
+      }}
+      onBlur={(e: React.FocusEvent<HTMLElement>) => {
+        e.currentTarget.style.borderColor = hasError ? '#F5B8B8' : '#EEF0F5';
+      }}
       {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
       {children}
