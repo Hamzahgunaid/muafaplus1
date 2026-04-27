@@ -57,15 +57,10 @@ const RISK_LABEL: Record<string, string> = {
 
 export default function NewReferralPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, hydrated } = useAuthStore();
   const [submitting, setSubmitting] = useState(false);
   const [apiError,   setApiError]   = useState<string | null>(null);
   const [success,    setSuccess]    = useState<ReferralResponse | null>(null);
-  const [hydrated,   setHydrated]   = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   useEffect(() => {
     if (hydrated && !isLoggedIn) { router.push("/login"); }

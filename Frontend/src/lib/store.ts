@@ -9,20 +9,40 @@ interface AuthState {
   userId:     string | null;
   fullName:   string | null;
   tenantId:   string | null;
+  hydrated:   boolean;
 
-  login:  (response: LoginResponse) => void;
-  logout: () => void;
+  login:        (response: LoginResponse) => void;
+  logout:       () => void;
   setPhysician: (p: PhysicianProfile) => void;
+  hydrate:      () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token:      typeof window !== "undefined" ? localStorage.getItem("muafa_token")    : null,
-  physician:  typeof window !== "undefined" ? JSON.parse(localStorage.getItem("muafa_user") ?? "null") : null,
-  isLoggedIn: typeof window !== "undefined" ? !!localStorage.getItem("muafa_token") : false,
-  role:       typeof window !== "undefined" ? localStorage.getItem("muafa_role")     : null,
-  userId:     typeof window !== "undefined" ? localStorage.getItem("muafa_userid")   : null,
-  fullName:   typeof window !== "undefined" ? localStorage.getItem("muafa_fullname") : null,
-  tenantId:   typeof window !== "undefined" ? localStorage.getItem("muafa_tenantid") : null,
+  // All initial values are SSR-safe — no localStorage reads at module load time
+  token:      null,
+  physician:  null,
+  isLoggedIn: false,
+  role:       null,
+  userId:     null,
+  fullName:   null,
+  tenantId:   null,
+  hydrated:   false,
+
+  // Called once on client mount to load persisted state
+  hydrate: () => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("muafa_token");
+    set({
+      token,
+      physician:  JSON.parse(localStorage.getItem("muafa_user") ?? "null"),
+      isLoggedIn: !!token,
+      role:       localStorage.getItem("muafa_role"),
+      userId:     localStorage.getItem("muafa_userid"),
+      fullName:   localStorage.getItem("muafa_fullname"),
+      tenantId:   localStorage.getItem("muafa_tenantid"),
+      hydrated:   true,
+    });
+  },
 
   login: (response) => {
     localStorage.setItem("muafa_token",    response.token);
@@ -31,21 +51,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem("muafa_fullname", response.fullName);
     localStorage.setItem("muafa_tenantid", response.tenantId ?? "");
     localStorage.setItem("muafa_user", JSON.stringify({
-      physicianId:  response.physicianId,
-      fullName:     response.fullName,
-      specialty:    response.specialty,
-      institution:  response.institution,
-      city:         null,
+      physicianId:   response.physicianId,
+      fullName:      response.fullName,
+      specialty:     response.specialty,
+      institution:   response.institution,
+      city:          null,
       totalSessions: 0,
     }));
     set({
       token:      response.token,
       physician:  {
-        physicianId:  response.physicianId,
-        fullName:     response.fullName,
-        specialty:    response.specialty,
-        institution:  response.institution,
-        city:         null,
+        physicianId:   response.physicianId,
+        fullName:      response.fullName,
+        specialty:     response.specialty,
+        institution:   response.institution,
+        city:          null,
         totalSessions: 0,
       },
       isLoggedIn: true,
@@ -53,6 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       userId:     response.userId,
       fullName:   response.fullName,
       tenantId:   response.tenantId ?? null,
+      hydrated:   true,
     });
   },
 
@@ -63,7 +84,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem("muafa_userid");
     localStorage.removeItem("muafa_fullname");
     localStorage.removeItem("muafa_tenantid");
-    set({ token: null, physician: null, isLoggedIn: false, role: null, userId: null, fullName: null, tenantId: null });
+    set({
+      token: null, physician: null, isLoggedIn: false,
+      role: null, userId: null, fullName: null, tenantId: null,
+    });
   },
 
   setPhysician: (p) => set({ physician: p }),

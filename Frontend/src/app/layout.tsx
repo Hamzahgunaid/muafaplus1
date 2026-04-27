@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import StoreHydrator from "@/components/StoreHydrator";
 
 export const metadata: Metadata = {
   title:       "معافى+ | لوحة تحكم الطبيب",
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="font-arabic bg-gray-50 text-gray-900 antialiased">
+        <StoreHydrator />
         {children}
       </body>
     </html>
