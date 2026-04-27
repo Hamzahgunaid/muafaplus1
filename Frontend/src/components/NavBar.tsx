@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
@@ -36,10 +35,7 @@ function getNavLinks(role: string | null): NavLink[] {
 export default function NavBar() {
   const pathname = usePathname()
   const router   = useRouter()
-  const { physician, fullName, role, logout } = useAuthStore()
-  const [hydrated, setHydrated] = useState(false)
-
-  useEffect(() => { setHydrated(true) }, [])
+  const { physician, fullName, role, logout, hydrated } = useAuthStore()
 
   const handleLogout = () => { logout(); router.push('/login') }
 
