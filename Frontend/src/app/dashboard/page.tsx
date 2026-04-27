@@ -11,10 +11,6 @@ const RISK_LABELS: Record<RiskLevel, string> = {
   LOW: "منخفض", MODERATE: "متوسط", HIGH: "مرتفع", CRITICAL: "حرج",
 };
 
-const RISK_CLASS: Record<RiskLevel, string> = {
-  LOW: "risk-low", MODERATE: "risk-moderate", HIGH: "risk-high", CRITICAL: "risk-critical",
-};
-
 const STATUS_LABELS: Record<string, string> = {
   pending:           "قيد الانتظار",
   in_progress:       "جارٍ التوليد",
@@ -23,21 +19,21 @@ const STATUS_LABELS: Record<string, string> = {
   Created:           "تم الإنشاء",
   Stage1Complete:    "مكتمل المرحلة 1",
   Stage1Delivered:   "تم الإرسال",
-  Stage2Requested:   "طلب المرحلة 2",
+  Stage2Requested:   "جارٍ التوليد",
   Stage2Complete:    "مكتمل",
   FeedbackSubmitted: "تم التقييم",
 };
 
-const REFERRAL_RISK_CLASS: Record<string, string> = {
-  LOW:      "bg-green-50  text-green-700  border border-green-200",
-  MODERATE: "bg-blue-50   text-blue-700   border border-blue-200",
-  HIGH:     "bg-orange-50 text-orange-700 border border-orange-200",
-  CRITICAL: "bg-red-50    text-red-700    border border-red-200",
+const RISK_BADGE_STYLE: Record<string, { background: string; color: string }> = {
+  LOW:      { background: "#E6F4EC", color: "#197540" },
+  MODERATE: { background: "#FDF3E1", color: "#B8771F" },
+  HIGH:     { background: "#FDECE2", color: "#D85A30" },
+  CRITICAL: { background: "#FBE5E5", color: "#D64545" },
 };
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isLoggedIn, physician, role } = useAuthStore();
+  const { isLoggedIn, physician, fullName, role } = useAuthStore();
   const [sessions,  setSessions]  = useState<SessionSummary[]>([]);
   const [referrals, setReferrals] = useState<ReferralResponse[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -81,238 +77,369 @@ export default function DashboardPage() {
 
   if (!isLoggedIn) return null;
 
-  // ── Admin dashboard (SuperAdmin + HospitalAdmin) ──────────────────────────
+  const displayName = fullName ?? physician?.fullName ?? "الطبيب";
+
+  // ── Admin dashboard ───────────────────────────────────────────────────────
   if (isAdmin) {
     const completed = referrals.filter(
       (r) => r.status === "Stage1Complete" || r.status === "Stage2Complete"
     ).length;
 
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen" style={{ backgroundColor: "#F6F7FB", fontFamily: "IBM Plex Sans Arabic, system-ui" }} dir="rtl">
         <NavBar />
-        <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <StatCard label="إجمالي الإحالات" value={referrals.length.toString()} />
-            <StatCard label="المكتملة"         value={completed.toString()} />
-            <StatCard label="قيد المعالجة"     value={(referrals.length - completed).toString()} />
+        <div className="max-w-7xl mx-auto px-6 py-8">
+
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-2"
+                style={{ background: "#E6F4EC", color: "#197540" }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                متصل بالنظام
+              </div>
+              <h1 className="text-2xl font-bold" style={{ color: "#0E1726" }}>
+                مرحباً، {displayName} 👋
+              </h1>
+              <p className="text-sm mt-1" style={{ color: "#5A6478" }}>
+                لوحة تحكم المدير — منصة معافى+
+              </p>
+            </div>
+            <Link
+              href="/referrals/new"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
+              style={{ background: "#1E3A72" }}
+            >
+              + إحالة جديدة
+            </Link>
           </div>
-          <ReferralsTable
-            referrals={referrals}
-            loading={loading}
-            onRefresh={fetchReferrals}
-            page={page}
-            setPage={setPage}
-          />
-        </main>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            {[
+              { label: "إجمالي الإحالات", value: referrals.length, icon: "📋", color: "#1E3A72", bg: "#EEF1F7" },
+              { label: "المكتملة",         value: completed,        icon: "✅", color: "#197540", bg: "#E6F4EC" },
+              { label: "قيد المعالجة",     value: referrals.length - completed, icon: "⏳", color: "#B8771F", bg: "#FDF3E1" },
+            ].map((stat, i) => (
+              <div key={i} className="rounded-2xl p-5" style={{ background: "white", border: "1px solid #EEF0F5" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: stat.bg }}>
+                    {stat.icon}
+                  </div>
+                  <span className="text-xs font-semibold" style={{ color: "#8A93A6" }}>{stat.label}</span>
+                </div>
+                <div className="text-3xl font-bold" style={{ color: stat.color }}>{stat.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Referrals table */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #EEF0F5" }}>
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #EEF0F5" }}>
+              <h2 className="font-bold text-base" style={{ color: "#0E1726" }}>الإحالات</h2>
+              <button
+                onClick={fetchReferrals}
+                className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ background: "#F6F7FB", color: "#5A6478", border: "1px solid #EEF0F5" }}
+              >
+                تحديث
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "#1E3A72", borderTopColor: "transparent" }} />
+              </div>
+            ) : referrals.length === 0 ? (
+              <div className="py-16 text-center">
+                <p className="text-sm mb-4" style={{ color: "#8A93A6" }}>لا توجد إحالات بعد</p>
+                <Link href="/referrals/new" className="text-sm font-medium" style={{ color: "#1E3A72" }}>
+                  إنشاء أول إحالة
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ background: "#F6F7FB" }}>
+                      {["رمز الإحالة", "مستوى الخطر", "الحالة", "التاريخ", ""].map((h, i) => (
+                        <th key={i} className="px-6 py-3 text-right text-xs font-semibold" style={{ color: "#8A93A6" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {referrals.map((r) => (
+                      <tr key={r.referralId} className="hover:bg-gray-50 transition" style={{ borderTop: "1px solid #EEF0F5" }}>
+                        <td className="px-6 py-3 font-mono text-xs" style={{ color: "#5A6478" }}>{r.referralCode}</td>
+                        <td className="px-6 py-3">
+                          {r.riskLevel && RISK_BADGE_STYLE[r.riskLevel] ? (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={RISK_BADGE_STYLE[r.riskLevel]}>
+                              {RISK_LABELS[r.riskLevel as RiskLevel] ?? r.riskLevel}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span className="text-xs" style={{ color: "#5A6478" }}>
+                            {STATUS_LABELS[r.status] ?? r.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                          {new Date(r.createdAt).toLocaleDateString("ar-YE")}
+                        </td>
+                        <td className="px-6 py-3">
+                          <Link
+                            href={`/referrals/${r.referralId}`}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                            style={{ background: "#EEF1F7", color: "#1E3A72" }}
+                          >
+                            عرض
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {referrals.length >= 20 && (
+              <div className="px-6 py-4 flex justify-between" style={{ borderTop: "1px solid #EEF0F5" }}>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                  className="text-sm disabled:opacity-40 transition" style={{ color: "#1E3A72" }}>
+                  السابق
+                </button>
+                <span className="text-xs" style={{ color: "#8A93A6" }}>صفحة {page}</span>
+                <button onClick={() => setPage((p) => p + 1)}
+                  className="text-sm transition" style={{ color: "#1E3A72" }}>
+                  التالي
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
 
   // ── Physician / Assistant dashboard ───────────────────────────────────────
+  const stats = {
+    total:     sessions.length,
+    completed: sessions.filter((s) => s.status === "complete" || s.status === "Completed").length,
+    articles:  sessions.reduce((sum, s) => sum + (s.totalArticles ?? 0), 0),
+    cost:      sessions.reduce((sum, s) => sum + (s.totalCost ?? 0), 0),
+  };
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen" style={{ backgroundColor: "#F6F7FB", fontFamily: "IBM Plex Sans Arabic, system-ui" }} dir="rtl">
       <NavBar />
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <StatCard label="إجمالي الجلسات"   value={(physician?.totalSessions ?? 0).toString()} />
-          <StatCard label="المكتملة"          value={sessions.filter((s) => s.status === "complete").length.toString()} />
-          <StatCard label="التكلفة الإجمالية" value={`$${sessions.reduce((acc, s) => acc + (s.totalCost ?? 0), 0).toFixed(3)}`} />
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-2"
+              style={{ background: "#E6F4EC", color: "#197540" }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              متصل بالنظام
+            </div>
+            <h1 className="text-2xl font-bold" style={{ color: "#0E1726" }}>
+              مرحباً، {displayName} 👋
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "#5A6478" }}>
+              هذا ملخص نشاطك الطبي على منصة معافى+
+            </p>
+          </div>
+          <button
+            onClick={() => router.push("/referrals/new")}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+            style={{ background: "#1E3A72" }}
+          >
+            + إحالة جديدة
+          </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800">سجل الجلسات</h2>
-            <button onClick={fetchSessions} className="text-brand-600 text-sm hover:underline">
-              تحديث
-            </button>
+        {/* 4-stat grid */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          {[
+            { label: "إجمالي الجلسات",   value: stats.total,                  icon: "📋", color: "#1E3A72", bg: "#EEF1F7" },
+            { label: "الجلسات المكتملة", value: stats.completed,              icon: "✅", color: "#197540", bg: "#E6F4EC" },
+            { label: "المقالات المولّدة", value: stats.articles,              icon: "📄", color: "#E87A2F", bg: "#FDF3E1" },
+            { label: "التكلفة الإجمالية", value: `$${stats.cost.toFixed(3)}`, icon: "💰", color: "#1E3A72", bg: "#EEF1F7" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-2xl p-5" style={{ background: "white", border: "1px solid #EEF0F5" }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: stat.bg }}>
+                  {stat.icon}
+                </div>
+                <span className="text-xs font-semibold" style={{ color: "#8A93A6" }}>{stat.label}</span>
+              </div>
+              <div className="text-3xl font-bold" style={{ color: stat.color }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main content grid */}
+        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 340px" }}>
+
+          {/* Sessions table */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #EEF0F5" }}>
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #EEF0F5" }}>
+              <h2 className="font-bold text-base" style={{ color: "#0E1726" }}>سجل الجلسات</h2>
+              <button
+                onClick={fetchSessions}
+                className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ background: "#F6F7FB", color: "#5A6478", border: "1px solid #EEF0F5" }}
+              >
+                تحديث
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="w-8 h-8 rounded-full border-2 animate-spin"
+                  style={{ borderColor: "#1E3A72", borderTopColor: "transparent" }} />
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="py-16 text-center">
+                <p className="text-sm mb-4" style={{ color: "#8A93A6" }}>لا توجد جلسات بعد</p>
+                <Link href="/referrals/new" className="text-sm font-medium" style={{ color: "#1E3A72" }}>
+                  إنشاء أول إحالة
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ background: "#F6F7FB" }}>
+                      {["رقم المريض", "مستوى الخطر", "المقالات", "الحالة", "التكلفة", "التاريخ", ""].map((h, i) => (
+                        <th key={i} className="px-4 py-3 text-right text-xs font-semibold" style={{ color: "#8A93A6" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((s, i) => (
+                      <tr key={s.sessionId ?? i} className="transition-colors hover:bg-gray-50"
+                        style={{ borderTop: "1px solid #EEF0F5" }}>
+                        <td className="px-4 py-3 text-sm font-mono" style={{ color: "#0E1726" }}>
+                          {(s.patientId ?? "").slice(0, 8)}…
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.riskLevel && RISK_BADGE_STYLE[s.riskLevel] ? (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={RISK_BADGE_STYLE[s.riskLevel]}>
+                              {RISK_LABELS[s.riskLevel]}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center" style={{ color: "#0E1726" }}>
+                          {s.totalArticles ?? 0}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                            style={{
+                              background: (s.status === "complete" || s.status === "Completed") ? "#E6F4EC" : "#EEF1F7",
+                              color:      (s.status === "complete" || s.status === "Completed") ? "#197540"  : "#1E3A72",
+                            }}>
+                            {STATUS_LABELS[s.status] ?? s.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm" style={{ color: "#0E1726" }}>
+                          {s.totalCost ? `$${s.totalCost.toFixed(3)}` : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm" style={{ color: "#5A6478" }}>
+                          {s.startedAt ? new Date(s.startedAt).toLocaleDateString("ar-YE") : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => router.push(`/sessions/${s.sessionId}`)}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
+                            style={{ background: "#EEF1F7", color: "#1E3A72" }}
+                          >
+                            عرض
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {sessions.length >= 20 && (
+              <div className="px-6 py-4 flex justify-between" style={{ borderTop: "1px solid #EEF0F5" }}>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                  className="text-sm disabled:opacity-40" style={{ color: "#1E3A72" }}>
+                  السابق
+                </button>
+                <span className="text-xs" style={{ color: "#8A93A6" }}>صفحة {page}</span>
+                <button onClick={() => setPage((p) => p + 1)} className="text-sm" style={{ color: "#1E3A72" }}>
+                  التالي
+                </button>
+              </div>
+            )}
           </div>
 
-          {loading ? (
-            <div className="py-16 text-center text-gray-400 text-sm">جاري التحميل...</div>
-          ) : sessions.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-gray-400 text-sm mb-4">لا توجد جلسات بعد</p>
-              <Link href="/referrals/new" className="text-brand-600 text-sm font-medium hover:underline">
-                إنشاء أول إحالة
-              </Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-xs">
-                    <th className="px-6 py-3 text-right font-medium">رقم المريض</th>
-                    <th className="px-6 py-3 text-right font-medium">مستوى الخطر</th>
-                    <th className="px-6 py-3 text-right font-medium">المقالات</th>
-                    <th className="px-6 py-3 text-right font-medium">الحالة</th>
-                    <th className="px-6 py-3 text-right font-medium">التكلفة</th>
-                    <th className="px-6 py-3 text-right font-medium">التاريخ</th>
-                    <th className="px-6 py-3 text-right font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {sessions.map((s) => (
-                    <tr key={s.sessionId} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 text-gray-600 font-mono text-xs">{s.patientId.slice(0, 8)}…</td>
-                      <td className="px-6 py-4">
-                        {s.riskLevel ? (
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs border font-medium ${RISK_CLASS[s.riskLevel]}`}>
-                            {RISK_LABELS[s.riskLevel]}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{s.totalArticles ?? "—"}</td>
-                      <td className="px-6 py-4">
-                        <span className={`text-xs font-medium ${
-                          s.status === "complete" ? "text-brand-600" :
-                          s.status === "failed"   ? "text-red-600"   : "text-amber-600"
-                        }`}>
-                          {STATUS_LABELS[s.status] ?? s.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        {s.totalCost ? `$${s.totalCost.toFixed(3)}` : "—"}
-                      </td>
-                      <td className="px-6 py-4 text-gray-400 text-xs">
-                        {new Date(s.startedAt).toLocaleDateString("ar-YE")}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Link href={`/sessions/${s.sessionId}`} className="text-brand-600 text-xs hover:underline">
-                          عرض
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {/* Right column */}
+          <div className="flex flex-col gap-4">
 
-          {sessions.length >= 20 && (
-            <div className="px-6 py-4 border-t border-gray-50 flex justify-between">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="text-sm text-gray-500 disabled:opacity-40 hover:text-brand-600 transition"
-              >
-                السابق
-              </button>
-              <span className="text-xs text-gray-400">صفحة {page}</span>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                className="text-sm text-gray-500 hover:text-brand-600 transition"
-              >
-                التالي
-              </button>
+            {/* AI Activity card */}
+            <div className="rounded-2xl p-6 text-white" style={{ background: "linear-gradient(135deg, #1E3A72, #11254A)" }}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
+                  نشاط الذكاء الاصطناعي
+                </span>
+              </div>
+              <svg viewBox="0 0 200 40" className="w-full h-8 mb-4">
+                <polyline
+                  points="0,20 25,20 35,5 42,35 50,10 58,20 85,20 95,5 102,35 110,10 118,20 145,20 155,5 162,35 170,10 178,20 200,20"
+                  fill="none" stroke="#50B2E6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                />
+              </svg>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-2xl font-bold">{stats.articles}</div>
+                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>مقال مولَّد</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">${stats.cost.toFixed(2)}</div>
+                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>تكلفة الذكاء</div>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Quick actions */}
+            <div className="rounded-2xl p-5" style={{ background: "white", border: "1px solid #EEF0F5" }}>
+              <h3 className="font-bold text-sm mb-4" style={{ color: "#0E1726" }}>إجراءات سريعة</h3>
+              <div className="flex flex-col gap-2">
+                {[
+                  { label: "+ إحالة جديدة",           href: "/referrals/new",       primary: true  },
+                  { label: "سيناريو اختبار جديد",      href: "/test-scenarios/new",  primary: false },
+                  { label: "عرض كل الإحالات",          href: "/referrals",           primary: false },
+                ].map((action, i) => (
+                  <button key={i}
+                    onClick={() => router.push(action.href)}
+                    className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-right transition-all"
+                    style={{
+                      background: action.primary ? "#1E3A72" : "#F6F7FB",
+                      color:      action.primary ? "white"   : "#1E3A72",
+                      border:     action.primary ? "none"    : "1px solid #EEF0F5",
+                      fontFamily: "IBM Plex Sans Arabic, system-ui",
+                    }}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
         </div>
-      </main>
-    </div>
-  );
-}
-
-// ── ReferralsTable (admin view) ───────────────────────────────────────────────
-
-function ReferralsTable({
-  referrals, loading, onRefresh, page, setPage,
-}: {
-  referrals: ReferralResponse[];
-  loading:   boolean;
-  onRefresh: () => void;
-  page:      number;
-  setPage:   (fn: (p: number) => number) => void;
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-800">الإحالات</h2>
-        <button onClick={onRefresh} className="text-brand-600 text-sm hover:underline">
-          تحديث
-        </button>
       </div>
-
-      {loading ? (
-        <div className="py-16 text-center text-gray-400 text-sm">جاري التحميل...</div>
-      ) : referrals.length === 0 ? (
-        <div className="py-16 text-center">
-          <p className="text-gray-400 text-sm mb-4">لا توجد إحالات بعد</p>
-          <Link href="/referrals/new" className="text-brand-600 text-sm font-medium hover:underline">
-            إنشاء أول إحالة
-          </Link>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-gray-500 text-xs">
-                <th className="px-6 py-3 text-right font-medium">رمز الإحالة</th>
-                <th className="px-6 py-3 text-right font-medium">مستوى الخطر</th>
-                <th className="px-6 py-3 text-right font-medium">الحالة</th>
-                <th className="px-6 py-3 text-right font-medium">التاريخ</th>
-                <th className="px-6 py-3 text-right font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {referrals.map((r) => (
-                <tr key={r.referralId} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 font-mono text-xs text-gray-600">{r.referralCode}</td>
-                  <td className="px-6 py-4">
-                    {r.riskLevel && REFERRAL_RISK_CLASS[r.riskLevel] ? (
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs border font-medium ${REFERRAL_RISK_CLASS[r.riskLevel]}`}>
-                        {RISK_LABELS[r.riskLevel as RiskLevel] ?? r.riskLevel}
-                      </span>
-                    ) : "—"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs text-gray-600">
-                      {STATUS_LABELS[r.status] ?? r.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-400 text-xs">
-                    {new Date(r.createdAt).toLocaleDateString("ar-YE")}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link href={`/referrals/${r.referralId}`} className="text-brand-600 text-xs hover:underline">
-                      عرض
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {referrals.length >= 20 && (
-        <div className="px-6 py-4 border-t border-gray-50 flex justify-between">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="text-sm text-gray-500 disabled:opacity-40 hover:text-brand-600 transition"
-          >
-            السابق
-          </button>
-          <span className="text-xs text-gray-400">صفحة {page}</span>
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            className="text-sm text-gray-500 hover:text-brand-600 transition"
-          >
-            التالي
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Shared ────────────────────────────────────────────────────────────────────
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 px-6 py-5">
-      <p className="text-xs text-gray-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
     </div>
   );
 }

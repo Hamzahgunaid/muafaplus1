@@ -61,7 +61,7 @@ export default function NavBar() {
 
         {/* Logo */}
         <div className="flex items-center">
-          <img src="/muafa-logo.png" alt="معافى+" className="h-10 w-auto object-contain" />
+          <img src="/muafa-logo.png" alt="معافى+" className="h-12 w-auto object-contain" />
         </div>
 
         {/* Nav links */}
