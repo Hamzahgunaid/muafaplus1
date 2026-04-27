@@ -61,10 +61,15 @@ export default function NewReferralPage() {
   const [submitting, setSubmitting] = useState(false);
   const [apiError,   setApiError]   = useState<string | null>(null);
   const [success,    setSuccess]    = useState<ReferralResponse | null>(null);
+  const [hydrated,   setHydrated]   = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn) { router.push("/login"); }
-  }, [isLoggedIn, router]);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated && !isLoggedIn) { router.push("/login"); }
+  }, [hydrated, isLoggedIn, router]);
 
   const {
     register,
@@ -128,6 +133,7 @@ export default function NewReferralPage() {
     }
   };
 
+  if (!hydrated) return null;
   if (!isLoggedIn) return null;
 
   // ── Success card ────────────────────────────────────────────────────────────
