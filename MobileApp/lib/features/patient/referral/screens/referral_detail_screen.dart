@@ -389,19 +389,19 @@ class _ReferralDetailScreenState
         // ── Feedback button ───────────────────────────────────────────────
         SizedBox(
           width: double.infinity,
-          height: 48,
-          child: OutlinedButton.icon(
+          height: 52,
+          child: ElevatedButton.icon(
             onPressed: () => context.push('/feedback/${detail.id}'),
-            icon: const Icon(Icons.star_outline_rounded,
-              color: AppColors.navy600, size: 20),
-            label: Text('تقييم المحتوى',
+            icon: const Icon(Icons.rate_review_outlined, size: 20),
+            label: Text('إنهاء وتقديم التقييم',
               style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14, fontWeight: FontWeight.w600,
-                color: AppColors.navy600)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.navy600),
+                fontSize: 15, fontWeight: FontWeight.w700)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.navy600,
+              foregroundColor: AppColors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12))),
+                borderRadius: BorderRadius.circular(12)),
+              elevation: 0),
           ),
         ),
 

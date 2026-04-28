@@ -5,7 +5,7 @@ import '../../features/patient/auth/screens/patient_login_screen.dart';
 import '../../features/patient/home/screens/patient_home_screen.dart';
 import '../../features/patient/referral/screens/referral_detail_screen.dart';
 import '../../features/patient/article/screens/article_reader_screen.dart';
-import '../../features/patient/feedback/screens/feedback_screen.dart';
+import '../../features/patient/screens/feedback_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
