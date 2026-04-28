@@ -169,7 +169,7 @@ export default function DashboardPage() {
                 <tbody>
                   {referrals.map(r => (
                     <tr key={r.referralId} className="hover:bg-gray-50 transition" style={{ borderTop: '1px solid #EEF0F5' }}>
-                      <td className="px-6 py-3 text-sm font-mono" style={{ color: '#0E1726' }}>{r.referralCode}</td>
+                      <td className="px-6 py-3 text-sm font-mono" style={{ color: '#0E1726' }}>{r.referralId}</td>
                       <td className="px-6 py-3">
                         {r.riskLevel ? (
                           <span className="px-2.5 py-1 rounded-full text-xs font-semibold"

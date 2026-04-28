@@ -162,9 +162,9 @@ export default function NewReferralPage() {
               className="text-sm mb-6"
               style={{ color: '#5A6478', fontFamily: "IBM Plex Sans Arabic, system-ui" }}
             >
-              رمز الإحالة:{" "}
+              رقم الإحالة:{" "}
               <span className="font-mono font-medium" style={{ color: '#0E1726' }}>
-                {success.referralCode}
+                {success.referralId}
               </span>
             </p>
 

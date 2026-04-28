@@ -171,19 +171,17 @@ export interface CreateReferralRequest {
 }
 
 export interface ReferralResponse {
-  referralId:           string;
-  referralCode:         string;
-  patientPhone:         string;
-  patientName:          string | null;
-  status:               string;
-  riskLevel:            string | null;
-  sessionId:            string | null;
-  notes:                string | null;
-  createdAt:            string;
-  updatedAt:            string;
-  scheduledDeliveryAt?: string | null;
-  deliveredAt?:         string | null;
-  chatEnabled?:         boolean;
+  referralId:          string;
+  status:              string;
+  riskLevel:           string | null;
+  patientPhone:        string;
+  patientName:         string | null;
+  whatsAppDelivery:    boolean;
+  scheduledDeliveryAt: string | null;
+  deliveredAt:         string | null;
+  createdAt:           string;
+  sessionId:           string | null;
+  chatEnabled:         boolean;
 }
 
 export interface ReferralArticleResponse {
