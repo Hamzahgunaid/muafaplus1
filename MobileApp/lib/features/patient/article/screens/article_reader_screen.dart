@@ -136,61 +136,60 @@ class _ArticleReaderScreenState
             : SingleChildScrollView(
                 controller: _scrollController,
                 padding: const EdgeInsets.all(20),
-                child: MarkdownBody(
-                  data: _content ?? '',
-                  styleSheet: MarkdownStyleSheet(
-                    h1: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 20, fontWeight: FontWeight.w700,
-                      color: AppColors.navy600),
-                    h2: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 17, fontWeight: FontWeight.w700,
-                      color: AppColors.navy600),
-                    h3: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 15, fontWeight: FontWeight.w600,
-                      color: AppColors.ink900),
-                    p: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 15, color: AppColors.ink700,
-                      height: 1.8),
-                    listBullet: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 15, color: AppColors.ink700),
-                    strong: GoogleFonts.ibmPlexSansArabic(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink900),
-                    blockquoteDecoration: BoxDecoration(
-                      color: AppColors.navy600.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: const Border(left: BorderSide(
-                        color: AppColors.orange500, width: 3))),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    MarkdownBody(
+                      data: _content ?? '',
+                      styleSheet: MarkdownStyleSheet(
+                        h1: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 20, fontWeight: FontWeight.w700,
+                          color: AppColors.navy600),
+                        h2: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 17, fontWeight: FontWeight.w700,
+                          color: AppColors.navy600),
+                        h3: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15, fontWeight: FontWeight.w600,
+                          color: AppColors.ink900),
+                        p: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15, color: AppColors.ink700,
+                          height: 1.8),
+                        listBullet: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15, color: AppColors.ink700),
+                        strong: GoogleFonts.ibmPlexSansArabic(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink900),
+                        blockquoteDecoration: BoxDecoration(
+                          color: AppColors.navy600.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: const Border(left: BorderSide(
+                            color: AppColors.orange500, width: 3))),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    const Divider(color: AppColors.ink100),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _ReactionButton(
+                          icon: Icons.thumb_up_outlined,
+                          label: 'مفيد',
+                          color: AppColors.green500,
+                          onTap: () => _submitReaction('like'),
+                        )),
+                        const SizedBox(width: 12),
+                        Expanded(child: _ReactionButton(
+                          icon: Icons.thumb_down_outlined,
+                          label: 'يحتاج تحسين',
+                          color: AppColors.riskHighText,
+                          onTap: () => _submitReaction('dislike'),
+                        )),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-        bottomNavigationBar: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            border: Border(top: BorderSide(color: AppColors.ink100))),
-          child: SafeArea(
-            top: false,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _ReactionButton(
-                  icon: Icons.thumb_up_outlined,
-                  label: 'مفيد',
-                  color: AppColors.green500,
-                  onTap: () => _submitReaction('like'),
-                ),
-                _ReactionButton(
-                  icon: Icons.thumb_down_outlined,
-                  label: 'يحتاج تحسين',
-                  color: AppColors.riskHighText,
-                  onTap: () => _submitReaction('dislike'),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

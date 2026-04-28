@@ -253,9 +253,11 @@ class _ReferralDetailScreenState
     final articlesAsync = ref.watch(
       referralArticlesProvider((detail.id, token)));
 
-    return ListView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
 
         // ── Hero card ────────────────────────────────────────────────────
         Container(
@@ -430,6 +432,7 @@ class _ReferralDetailScreenState
 
         const SizedBox(height: 16),
       ],
+      ),
     );
   }
 }
