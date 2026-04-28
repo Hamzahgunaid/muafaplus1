@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
@@ -520,22 +520,19 @@ function F({
 }
 
 // FI = focusable input — zero hooks, no SSR/client mismatch
-const FI = ({
-  as: Tag = "input",
-  hasError,
-  children,
-  ...props
-}: {
-  as?: "input" | "textarea" | "select";
-  hasError?: boolean;
-  children?: React.ReactNode;
-  [key: string]: unknown;
-}) => {
-  const { hasError: _h, ...rest } = { hasError, ...props };
-  void _h;
-
+const FI = React.forwardRef<
+  HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement,
+  {
+    as?: "input" | "textarea" | "select";
+    hasError?: boolean;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }
+>(({ as: Tag = "input", hasError, children, ...rest }, ref) => {
+  const T = Tag as React.ElementType;
   return (
-    <Tag
+    <T
+      ref={ref as React.RefObject<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>}
       style={{
         width: '100%',
         padding: '12px 16px',
@@ -557,9 +554,10 @@ const FI = ({
       {...(rest as React.HTMLAttributes<HTMLElement>)}
     >
       {children}
-    </Tag>
+    </T>
   );
-};
+});
+FI.displayName = 'FI';
 
 const Spin = () => (
   <span className="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin flex-shrink-0" />
