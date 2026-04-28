@@ -73,6 +73,8 @@ export default function NewReferralPage() {
     reset,
     formState: { errors },
   } = useForm<FormValues>({
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
     defaultValues: {
       patientPhone:           "",
       patientName:            "",
@@ -259,11 +261,12 @@ export default function NewReferralPage() {
               <F label="رقم الهاتف" req err={errors.patientPhone?.message}>
                 <FI
                   type="text"
+                  dir="ltr"
                   placeholder="+967XXXXXXXXX"
                   hasError={!!errors.patientPhone}
                   {...register("patientPhone", {
                     required: "رقم الهاتف مطلوب",
-                    pattern:  { value: /^\+?[0-9]{9,15}$/, message: "رقم هاتف غير صالح" },
+                    pattern:  { value: /^[+0][0-9]{8,15}$/, message: "رقم هاتف غير صالح" },
                   })}
                 />
               </F>
@@ -319,7 +322,7 @@ export default function NewReferralPage() {
                 <FI
                   as="select"
                   hasError={!!errors.ageGroup}
-                  {...register("ageGroup", { required: "مطلوب" })}
+                  {...register("ageGroup")}
                 >
                   {AGE_GROUPS.map((g) => (
                     <option key={g.value} value={g.value}>{g.label}</option>
