@@ -45,14 +45,14 @@ const getStatusStyle = (status: string): React.CSSProperties => {
 
 export default function TestScenariosPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, hydrated } = useAuthStore();
   const [scenarios, setScenarios] = useState<TestScenarioResponse[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoggedIn) { router.push("/login"); }
-  }, [isLoggedIn, router]);
+    if (hydrated && !isLoggedIn) { router.push("/login"); }
+  }, [hydrated, isLoggedIn, router]);
 
   const fetchScenarios = useCallback(async () => {
     setLoading(true);
@@ -72,10 +72,10 @@ export default function TestScenariosPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoggedIn) fetchScenarios();
-  }, [isLoggedIn, fetchScenarios]);
+    if (hydrated && isLoggedIn) fetchScenarios();
+  }, [hydrated, isLoggedIn, fetchScenarios]);
 
-  if (!isLoggedIn) return null;
+  if (!hydrated) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-ink-50" dir="rtl">

@@ -129,7 +129,6 @@ export default function NewReferralPage() {
   };
 
   if (!hydrated) return null;
-  if (!isLoggedIn) return null;
 
   // ── Success card ────────────────────────────────────────────────────────────
   if (success) {
