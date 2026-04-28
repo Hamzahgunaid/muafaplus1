@@ -150,7 +150,7 @@ export default function LoginPage() {
             أدخل بياناتك للوصول إلى لوحة التحكم
           </p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <form onSubmit={handleSubmit(onSubmit)} method="post" className="space-y-5" noValidate>
 
             {/* Email */}
             <div>

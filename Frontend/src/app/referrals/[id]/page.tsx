@@ -201,7 +201,7 @@ function InfoCard({ referral: r }: { referral: ReferralResponse }) {
       <dl className="space-y-2 text-sm">
         <Row label="رقم الهاتف"    value={maskPhone(r.patientPhone)} mono />
         {r.patientName && <Row label="اسم المريض"  value={r.patientName} />}
-        <Row label="رمز الإحالة"   value={r.referralCode} mono />
+        <Row label="رقم الإحالة"   value={r.referralId} mono />
         <Row label="تاريخ الإنشاء" value={formatRelativeTime(r.createdAt)} />
         {deliveryTime && (
           <Row label="موعد الإرسال" value={deliveryTime} />
