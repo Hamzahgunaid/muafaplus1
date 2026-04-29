@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/patient/auth/providers/auth_provider.dart';
+import '../../features/auth/screens/splash_decider_screen.dart';
 import '../../features/patient/auth/screens/patient_login_screen.dart';
 import '../../features/patient/home/screens/patient_home_screen.dart';
 import '../../features/patient/referral/screens/referral_detail_screen.dart';
@@ -12,23 +12,12 @@ import '../../features/provider/screens/create_referral_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/login',
-    redirect: (context, state) {
-      final location = state.matchedLocation;
-
-      // Never redirect provider routes — they handle their own auth
-      if (location.startsWith('/provider')) return null;
-
-      // Check patient auth synchronously from Riverpod
-      final patientAuth = ref.read(authProvider);
-      final isPatientLoggedIn = patientAuth.token != null;
-      final isOnPatientLogin = location == '/login';
-
-      if (!isPatientLoggedIn && !isOnPatientLogin) return '/login';
-      if (isPatientLoggedIn && isOnPatientLogin) return '/home';
-      return null;
-    },
+    initialLocation: '/splash',
     routes: [
+      // ── Splash ──────────────────────────────────────────────────────────
+      GoRoute(path: '/splash',
+        builder: (_, __) => const SplashDeciderScreen()),
+
       // ── Patient routes ───────────────────────────────────────────────────
       GoRoute(path: '/login',
         builder: (_, __) => const PatientLoginScreen()),
