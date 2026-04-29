@@ -223,13 +223,16 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
                     const SizedBox(height: 12),
 
                     // Provider login entry point
-                    TextButton(
-                      onPressed: () => context.go('/provider/login'),
-                      child: const Text(
-                        'دخول كمزود خدمة صحية',
-                        style: TextStyle(
-                          color: Color(0xFF5A6478),
-                          fontSize: 13,
+                    Center(
+                      child: TextButton(
+                        onPressed: () => context.go('/provider/login'),
+                        child: const Text(
+                          'دخول كمزود خدمة صحية',
+                          style: TextStyle(
+                            color: Color(0xFF283481),
+                            fontSize: 13,
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
                     ),
