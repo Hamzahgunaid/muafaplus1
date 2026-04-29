@@ -223,7 +223,20 @@ class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
+
+                      TextButton(
+                        onPressed: () => context.go('/provider/login'),
+                        child: const Text(
+                          'دخول كمزود خدمة صحية',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
 
                       Text(AppStrings.disclaimer,
                         style: GoogleFonts.ibmPlexSansArabic(
