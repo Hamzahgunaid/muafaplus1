@@ -6,7 +6,6 @@ import '../../features/patient/home/screens/patient_home_screen.dart';
 import '../../features/patient/referral/screens/referral_detail_screen.dart';
 import '../../features/patient/article/screens/article_reader_screen.dart';
 import '../../features/patient/screens/feedback_screen.dart';
-import '../../features/provider/screens/provider_login_screen.dart';
 import '../../features/provider/screens/dashboard_screen.dart';
 import '../../features/provider/screens/create_referral_screen.dart';
 
@@ -35,8 +34,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           referralId: state.pathParameters['id']!)),
 
       // ── Provider routes ──────────────────────────────────────────────────
-      GoRoute(path: '/provider/login',
-        builder: (_, __) => const ProviderLoginScreen()),
       GoRoute(path: '/provider/dashboard',
         builder: (_, __) => const ProviderDashboardScreen()),
       GoRoute(path: '/provider/referrals/new',

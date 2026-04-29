@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../providers/auth_provider.dart';
+import '../../../provider/providers/physician_auth_provider.dart';
 
 class PatientLoginScreen extends ConsumerStatefulWidget {
   const PatientLoginScreen({super.key});
@@ -13,289 +14,472 @@ class PatientLoginScreen extends ConsumerStatefulWidget {
   ConsumerState<PatientLoginScreen> createState() => _PatientLoginScreenState();
 }
 
-class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen> {
+class _PatientLoginScreenState extends ConsumerState<PatientLoginScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  // Patient tab
   final _phoneController = TextEditingController();
-  final _otpControllers  = List.generate(4, (_) => TextEditingController());
-  final _otpFocusNodes   = List.generate(4, (_) => FocusNode());
+  final _codeController  = TextEditingController();
+
+  // Provider tab
+  final _emailController    = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _phoneController.dispose();
-    for (final c in _otpControllers) c.dispose();
-    for (final f in _otpFocusNodes)  f.dispose();
+    _codeController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  String get _fullCode => _otpControllers.map((c) => c.text).join();
-
-  Future<void> _handleLogin() async {
+  Future<void> _patientLogin() async {
     final phone = _phoneController.text.trim();
-    final code  = _fullCode;
+    final code  = _codeController.text.trim();
     if (phone.isEmpty || code.length != 4) return;
     final success = await ref.read(authProvider.notifier).login(phone, code);
     if (success && mounted) context.go('/home');
   }
 
-  void _onOtpChanged(String value, int index) {
-    if (value.length == 1 && index < 3) {
-      _otpFocusNodes[index + 1].requestFocus();
-    }
-    if (value.isEmpty && index > 0) {
-      _otpFocusNodes[index - 1].requestFocus();
-    }
-    if (_fullCode.length == 4) _handleLogin();
-    setState(() {});
+  Future<void> _providerLogin() async {
+    final success = await ref
+        .read(physicianAuthProvider.notifier)
+        .login(_emailController.text.trim(), _passwordController.text);
+    if (success && mounted) context.go('/provider/dashboard');
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final isLoading = authState.status == AuthStatus.loading;
-    final hasError  = authState.status == AuthStatus.error;
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppColors.navy800,
-        body: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        body: Column(
+          children: [
 
-              // ── Navy hero ────────────────────────────────────────────────
-              Container(
-                height: 280,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [AppColors.navy800, AppColors.navy600],
-                  ),
+            // ── Navy hero ────────────────────────────────────────────────
+            Container(
+              height: 260,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.navy800, AppColors.navy600],
                 ),
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text('معافى+',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 20, fontWeight: FontWeight.w700,
-                              color: AppColors.navy600)),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(height: 24),
-                        Text(AppStrings.loginTitle,
+                        child: Text('معافى+',
                           style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 26, fontWeight: FontWeight.w700,
-                            color: AppColors.white, height: 1.3)),
-                        const SizedBox(height: 10),
-                        Text(AppStrings.loginSubtitle,
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 14, height: 1.6,
-                            color: AppColors.white.withOpacity(0.65))),
-                      ],
-                    ),
+                            fontSize: 20, fontWeight: FontWeight.w700,
+                            color: AppColors.navy600)),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(AppStrings.loginTitle,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 24, fontWeight: FontWeight.w700,
+                          color: AppColors.white, height: 1.3)),
+                      const SizedBox(height: 8),
+                      Text(AppStrings.loginSubtitle,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 13, height: 1.6,
+                          color: AppColors.white.withOpacity(0.65))),
+                    ],
                   ),
                 ),
               ),
+            ),
 
-              // ── White card ───────────────────────────────────────────────
-              Container(
+            // ── White card with tabs ─────────────────────────────────────
+            Expanded(
+              child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: AppColors.ink50,
                   borderRadius: BorderRadius.vertical(
                     top: Radius.circular(24)),
                 ),
-                padding: const EdgeInsets.fromLTRB(28, 32, 28, 40),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-
-                    // Phone field
-                    Text(AppStrings.phoneLabel,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 13, fontWeight: FontWeight.w600,
-                        color: AppColors.ink700)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      textDirection: TextDirection.ltr,
-                      onChanged: (_) => setState(() {}),
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 15, color: AppColors.ink900),
-                      decoration: InputDecoration(
-                        hintText: AppStrings.phoneHint,
-                        hintStyle: GoogleFonts.ibmPlexSansArabic(
-                          color: AppColors.ink400),
-                        filled: true,
-                        fillColor: AppColors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.ink100)),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.ink100)),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.navy600, width: 1.5)),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                    // Tab bar
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                      decoration: BoxDecoration(
+                        color: AppColors.ink100,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // OTP label
-                    Text(AppStrings.codeLabel,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 13, fontWeight: FontWeight.w600,
-                        color: AppColors.ink700)),
-                    const SizedBox(height: 8),
-
-                    // 4-box OTP row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(4, (i) => _OtpBox(
-                        controller: _otpControllers[i],
-                        focusNode: _otpFocusNodes[i],
-                        onChanged: (v) => _onOtpChanged(v, i),
-                      )),
-                    ),
-
-                    // Error banner
-                    if (hasError) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.riskCritBg,
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicator: BoxDecoration(
+                          color: AppColors.navy600,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: AppColors.riskCritText.withOpacity(0.3)),
                         ),
-                        child: Text(AppStrings.loginError,
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 13, color: AppColors.riskCritText),
-                          textAlign: TextAlign.center),
-                      ),
-                    ],
-
-                    const SizedBox(height: 32),
-
-                    // Login button
-                    SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.navy600,
-                          foregroundColor: AppColors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
-                        ),
-                        child: isLoading
-                          ? const SizedBox(width: 20, height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                          : Text(AppStrings.loginButton,
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700)),
+                        labelColor: AppColors.white,
+                        unselectedLabelColor: AppColors.ink700,
+                        labelStyle: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 13, fontWeight: FontWeight.w600),
+                        unselectedLabelStyle: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 13),
+                        dividerColor: Colors.transparent,
+                        tabs: const [
+                          Tab(text: 'دخول المريض'),
+                          Tab(text: 'دخول مزود الخدمة'),
+                        ],
                       ),
                     ),
 
-                    const SizedBox(height: 12),
-
-                    // Provider login entry point
-                    Center(
-                      child: TextButton(
-                        onPressed: () => context.go('/provider/login'),
-                        child: const Text(
-                          'دخول كمزود خدمة صحية',
-                          style: TextStyle(
-                            color: Color(0xFF283481),
-                            fontSize: 13,
-                            decoration: TextDecoration.underline,
+                    // Tab content
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _PatientTab(
+                            phoneController: _phoneController,
+                            codeController: _codeController,
+                            onLogin: _patientLogin,
                           ),
-                        ),
+                          _ProviderTab(
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            obscurePassword: _obscurePassword,
+                            onToggleObscure: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                            onLogin: _providerLogin,
+                          ),
+                        ],
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    Text(AppStrings.disclaimer,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 11, color: AppColors.ink400, height: 1.5),
-                      textAlign: TextAlign.center),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _OtpBox extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final ValueChanged<String> onChanged;
+// ── Patient tab ───────────────────────────────────────────────────────────────
 
-  const _OtpBox({
-    required this.controller,
-    required this.focusNode,
-    required this.onChanged,
+class _PatientTab extends ConsumerWidget {
+  final TextEditingController phoneController;
+  final TextEditingController codeController;
+  final VoidCallback onLogin;
+
+  const _PatientTab({
+    required this.phoneController,
+    required this.codeController,
+    required this.onLogin,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 64, height: 64,
-      child: TextFormField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 1,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        onChanged: onChanged,
-        style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 24, fontWeight: FontWeight.w700,
-          color: AppColors.navy600),
-        decoration: InputDecoration(
-          counterText: '',
-          filled: true,
-          fillColor: AppColors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.ink100)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.ink100)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: AppColors.navy600, width: 2)),
-          contentPadding: EdgeInsets.zero,
-        ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final patientState = ref.watch(authProvider);
+    final isLoading = patientState.status == AuthStatus.loading;
+    final hasError  = patientState.status == AuthStatus.error;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+
+          Text(AppStrings.phoneLabel,
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 13, fontWeight: FontWeight.w600,
+              color: AppColors.ink700)),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 15, color: AppColors.ink900),
+            decoration: InputDecoration(
+              hintText: AppStrings.phoneHint,
+              hintStyle: GoogleFonts.ibmPlexSansArabic(
+                color: AppColors.ink400),
+              filled: true,
+              fillColor: AppColors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.navy600, width: 1.5)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 14),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Text(AppStrings.codeLabel,
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 13, fontWeight: FontWeight.w600,
+              color: AppColors.ink700)),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: codeController,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 22, fontWeight: FontWeight.w700,
+              color: AppColors.navy600,
+              letterSpacing: 12),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: '• • • •',
+              hintStyle: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 22, color: AppColors.ink300,
+                letterSpacing: 12),
+              filled: true,
+              fillColor: AppColors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.navy600, width: 1.5)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 16),
+            ),
+          ),
+
+          if (hasError) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.riskCritBg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.riskCritText.withOpacity(0.3)),
+              ),
+              child: Text(patientState.errorMessage ?? AppStrings.loginError,
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 13, color: AppColors.riskCritText),
+                textAlign: TextAlign.center),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          SizedBox(
+            height: 52,
+            child: ElevatedButton(
+              onPressed: isLoading ? null : onLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.navy600,
+                foregroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: isLoading
+                ? const SizedBox(width: 20, height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2))
+                : Text(AppStrings.loginButton,
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Text(AppStrings.disclaimer,
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 11, color: AppColors.ink400, height: 1.5),
+            textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Provider tab ──────────────────────────────────────────────────────────────
+
+class _ProviderTab extends ConsumerWidget {
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool obscurePassword;
+  final VoidCallback onToggleObscure;
+  final VoidCallback onLogin;
+
+  const _ProviderTab({
+    required this.emailController,
+    required this.passwordController,
+    required this.obscurePassword,
+    required this.onToggleObscure,
+    required this.onLogin,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(physicianAuthProvider);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+
+          Text('البريد الإلكتروني',
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 13, fontWeight: FontWeight.w600,
+              color: AppColors.ink700)),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.left,
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 15, color: AppColors.ink900),
+            decoration: InputDecoration(
+              hintText: 'doctor@hospital.ye',
+              hintStyle: GoogleFonts.ibmPlexSansArabic(
+                color: AppColors.ink400),
+              filled: true,
+              fillColor: AppColors.white,
+              prefixIcon: const Icon(Icons.email_outlined,
+                color: AppColors.ink400),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.navy600, width: 1.5)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 14),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Text('كلمة المرور',
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 13, fontWeight: FontWeight.w600,
+              color: AppColors.ink700)),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: passwordController,
+            obscureText: obscurePassword,
+            textDirection: TextDirection.ltr,
+            onFieldSubmitted: (_) => onLogin(),
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 15, color: AppColors.ink900),
+            decoration: InputDecoration(
+              hintText: '••••••••',
+              hintStyle: GoogleFonts.ibmPlexSansArabic(
+                color: AppColors.ink400),
+              filled: true,
+              fillColor: AppColors.white,
+              prefixIcon: const Icon(Icons.lock_outlined,
+                color: AppColors.ink400),
+              suffixIcon: IconButton(
+                icon: Icon(obscurePassword
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+                  color: AppColors.ink400),
+                onPressed: onToggleObscure,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.ink100)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.navy600, width: 1.5)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 14),
+            ),
+          ),
+
+          if (authState.error != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.riskCritBg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.riskCritText.withOpacity(0.3)),
+              ),
+              child: Text(authState.error!,
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 13, color: AppColors.riskCritText),
+                textAlign: TextAlign.center),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          SizedBox(
+            height: 52,
+            child: ElevatedButton(
+              onPressed: authState.isLoading ? null : onLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.navy600,
+                foregroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: authState.isLoading
+                ? const SizedBox(width: 20, height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2))
+                : Text('دخول',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
       ),
     );
   }

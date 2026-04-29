@@ -40,7 +40,7 @@ class ProviderDashboardScreen extends ConsumerWidget {
               tooltip: 'تسجيل الخروج',
               onPressed: () async {
                 await ref.read(physicianAuthProvider.notifier).logout();
-                if (context.mounted) context.go('/provider/login');
+                if (context.mounted) context.go('/login');
               },
             ),
           ],
