@@ -15,6 +15,7 @@ class AppColors {
   static const ink700  = Color(0xFF2D3748);
   static const ink500  = Color(0xFF5A6478);
   static const ink400  = Color(0xFF8A93A6);
+  static const ink300  = Color(0xFFB0B8C9);
   static const ink100  = Color(0xFFEEF0F5);
   static const ink50   = Color(0xFFF6F7FB);
   static const white   = Color(0xFFFFFFFF);
