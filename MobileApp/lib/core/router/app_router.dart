@@ -11,18 +11,21 @@ import '../../features/provider/screens/dashboard_screen.dart';
 import '../../features/provider/screens/create_referral_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
   return GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
-      // Provider routes manage their own auth — let them through unconditionally
-      if (state.matchedLocation.startsWith('/provider')) return null;
+      final location = state.matchedLocation;
 
-      if (authState.isInitializing) return null;
-      final isAuth  = authState.status == AuthStatus.authenticated;
-      final isLogin = state.matchedLocation == '/login';
-      if (isAuth && isLogin)  return '/home';
-      if (!isAuth && !isLogin) return '/login';
+      // Never redirect provider routes — they handle their own auth
+      if (location.startsWith('/provider')) return null;
+
+      // Check patient auth synchronously from Riverpod
+      final patientAuth = ref.read(authProvider);
+      final isPatientLoggedIn = patientAuth.token != null;
+      final isOnPatientLogin = location == '/login';
+
+      if (!isPatientLoggedIn && !isOnPatientLogin) return '/login';
+      if (isPatientLoggedIn && isOnPatientLogin) return '/home';
       return null;
     },
     routes: [
