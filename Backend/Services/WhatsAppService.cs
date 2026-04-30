@@ -54,8 +54,8 @@ public class WhatsAppService
             type = "template",
             template = new
             {
-                name     = "muafa_test_message",
-                language = new { code = "en" }
+                name     = "hello_world",
+                language = new { code = "en_US" }
             }
         };
 
@@ -85,8 +85,8 @@ public class WhatsAppService
             type = "template",
             template = new
             {
-                name     = "muafa_test_message",
-                language = new { code = "en" }
+                name     = "hello_world",
+                language = new { code = "en_US" }
             }
         };
 
