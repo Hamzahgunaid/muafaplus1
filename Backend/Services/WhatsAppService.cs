@@ -198,8 +198,8 @@ public class WhatsAppService
             }
 
             _logger.LogInformation(
-                "WhatsApp message sent to {Phone} — status:{Status}",
-                toPhone, (int)response.StatusCode);
+                "WhatsApp message sent — status:{Status}",
+                (int)response.StatusCode);
 
             return (true, null);
         }
