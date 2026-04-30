@@ -54,21 +54,8 @@ public class WhatsAppService
             type = "template",
             template = new
             {
-                name     = "muafa_health_notification",
-                language = new { code = "ar" },
-                components = new[]
-                {
-                    new
-                    {
-                        type = "body",
-                        parameters = new[]
-                        {
-                            new { type = "text", text = patientName },
-                            new { type = "text", text = physicianName },
-                            new { type = "text", text = appLink }
-                        }
-                    }
-                }
+                name     = "muafa_test_message",
+                language = new { code = "en" }
             }
         };
 
@@ -98,19 +85,8 @@ public class WhatsAppService
             type = "template",
             template = new
             {
-                name     = "muafa_access_code1",
-                language = new { code = "ar" },
-                components = new[]
-                {
-                    new
-                    {
-                        type = "body",
-                        parameters = new[]
-                        {
-                            new { type = "text", text = accessCode }
-                        }
-                    }
-                }
+                name     = "muafa_test_message",
+                language = new { code = "en" }
             }
         };
 
