@@ -22,6 +22,8 @@
 - Anthropic SDK: v5.10.0 with prompt caching enabled
 - Messaging: WhatsApp Business API (Meta Cloud API)
 - Auth: JWT Bearer + BCrypt (providers) / Phone+Code (patients)
+- Flutter 3.41.7 — MobileApp/ folder — Chrome for dev/testing (APK deferred)
+- State/Nav/Network (Flutter): Riverpod, GoRouter, Dio, Hive, Firebase (core + messaging)
 
 ## Architecture Workflow
 Claude (Architect) → Hamzah (Coordinator) → Claude Code (Implementer)
@@ -91,15 +93,33 @@ DATABASE_URL=<railway postgresql connection string>
 ANTHROPIC_API_KEY=<anthropic api key>
 JWT_SECRET=<jwt secret>
 Cors__AllowedOrigins__0=https://muafaplus1.vercel.app
-WHATSAPP_PHONE_NUMBER_ID=1112172131979263
-WHATSAPP_ACCESS_TOKEN=<meta access token>
-WHATSAPP_TEST_MODE=true
+WhatsApp__PhoneNumberId=1112172131979263
+WhatsApp__AccessToken=<meta temporary token — expires ~1hr, regenerate before testing>
+WhatsApp__TestMode=false
+WhatsApp__BusinessAccountId=2052346812292213
+NOTE: Railway uses double-underscore notation for .NET config sections.
+Old-style WHATSAPP_ACCESSTOKEN variable is NOT read by backend — use double-underscore form only.
 
 ## WhatsApp Configuration
 - Provider: Meta Cloud API
-- PhoneNumberId: 1112172131979263
-- TestMode: true (uses hello_world template only)
-- Two-message delivery: Message 1 = full summary article, Message 2 = 4-digit access code
+- Meta app ID: 947161031028880
+- Sender: Meta test number +1 555 161 5779 (PhoneNumberId: 1112172131979263)
+- Business Account ID: 2052346812292213
+- TestMode: false (must remain false — test mode silently drops all messages without error)
+- Templates currently active in backend: hello_world (en_US) — TEMPORARY for testing
+- Real approved templates (under business account linked to +967782705557):
+  - muafa_health_notification (Marketing, 3 vars: patient name, physician name, app link)
+  - muafa_access_code1 (Authentication, 1 var: 4-digit code)
+- Verified test recipient: +967700853980
+- Two-message delivery: Message 1 = health notification, Message 2 = access code
+- PENDING: Migrate sender to real Muafa+ number (+967782705557)
+- PENDING: Generate permanent System User token (current token expires hourly)
+- PENDING: Restore real templates after number migration
+- Error codes reference:
+  - #131030 = recipient not in Meta whitelist (development mode restriction)
+  - #132001 = template name or language code mismatch
+  - #131005 = expired or invalid access token (regenerate token in Meta API Setup)
+  - #138000 = template has call button not enabled on test number
 
 ## JWT Claims Structure
 ```json
@@ -207,6 +227,8 @@ All keys cleared on logout.
   - JwtService.cs — GenerateToken(AppUser) — use this overload only
   - InvitationCodeService.cs
   - TenantService.cs
+  - ReferralService.cs — includes GetReferralForPatientAsync (patient-scoped referral access)
+    and ExtractMarkdownTitle() helper on ReferralArticleResponse DTO
 - Data: Backend/Data/MuafaDbContext.cs
 - Prompts: Backend/Prompts/Stage1SystemPrompt.txt, Stage2SystemPrompt.txt
 
@@ -260,6 +282,14 @@ All keys cleared on logout.
 - ChangePassword fixed to use AppUser
 - GetTenantUsers fixed — returns TenantRole enum name not AppUser.Role string
 - GenerationSessions FK constraints dropped (Patients + Physicians)
+- Full design system applied across all pages:
+  navy #1E3A72 primary, IBM Plex Sans Arabic, #F6F7FB background,
+  white cards, #EEF0F5 borders, risk badge color system
+- Pages redesigned: login, NavBar, dashboard, referrals, referrals/[id],
+  referrals/new, sessions/[id], test-scenarios
+- Logo variants: muafa-logo.png (transparent bg) and muafa-logo-white.png
+  (all-white pixels) in Frontend/public/
+- STATUS_LABEL map for Arabic status translations
 
 ### Phase 3 — Physician-Patient Chat (Complete)
 - Physician-patient async chat working end to end with disclaimer
@@ -267,6 +297,23 @@ All keys cleared on logout.
 - WhatsAppEnabled boolean added to TenantSettings (admin toggle persists)
 - Physician.ChatEnabled gate removed — chat gated by TenantSettings.ChatEnabled only
 - Admin settings toggle saves correctly (whatsAppEnabled ?? false guard added)
+
+### Phase 4 — Flutter Mobile App (Complete — Patient Side)
+- MobileApp/ folder — Flutter 3.41.7, Android SDK 36.1.0
+- Patient flow verified end-to-end in Chrome:
+  Login (navy hero + white sheet + 4-box OTP) →
+  Home (referral cards with risk badges) →
+  Referral Detail (Stage 1 summary + Stage 2 trigger) →
+  Article Reader (markdown rendering + scroll tracking + like/dislike) →
+  Feedback (5-star rating + tag chips) →
+  Success screen
+- Auth race condition resolved: isInitializing state in AuthState blocks
+  GoRouter redirect until _checkExistingToken() completes
+- JWT passed via Riverpod authProvider.token to fresh Dio instances
+  (never from SharedPreferences)
+- GET /referrals/{id} uses patient-scoped GetReferralForPatientAsync
+- Article titles extracted via ExtractMarkdownTitle() from first # heading in content_ar
+- Provider side (physician dashboard, referral creation): PENDING next deliverable
 
 ## Pending — Phase 3 Remaining
 - [ ] Streaming SSE frontend for test-scenarios/new page
@@ -277,6 +324,14 @@ All keys cleared on logout.
 - [ ] React hydration errors #418/#423 on admin tenant page (chat API call)
 - [ ] Assistant-physician linking — test dropdown form in production
 - [ ] Invitation codes — test copy button and generation in production
+
+## Pending — Phase 4 Remaining
+- [ ] WhatsApp: migrate sender from Meta test number to real Muafa+ number (+967782705557)
+- [ ] WhatsApp: generate permanent System User token (current token expires hourly)
+- [ ] WhatsApp: restore real templates (muafa_health_notification + muafa_access_code1)
+- [ ] Flutter Phase 4: provider side — physician login, dashboard, referral creation
+- [ ] Flutter Phase 4: Firebase push notifications integration
+- [ ] Flutter Phase 4: offline content caching with Hive
 
 ## Pending — Phase 5
 - [ ] pgvector Layer 2 near-match vector search (after 50 patients)
