@@ -13,6 +13,7 @@ class ReferralSummary {
   final String primaryDiagnosis;
   final String createdAt;
   final bool hasStage2;
+  final bool chatEnabled;
 
   ReferralSummary({
     required this.id,
@@ -21,15 +22,33 @@ class ReferralSummary {
     required this.primaryDiagnosis,
     required this.createdAt,
     required this.hasStage2,
+    required this.chatEnabled,
   });
+
+  static String _formatDate(String iso) {
+    if (iso.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inDays > 7) return '${dt.day}/${dt.month}/${dt.year}';
+      if (diff.inDays >= 1) return 'منذ ${diff.inDays} ${diff.inDays == 1 ? 'يوم' : 'أيام'}';
+      if (diff.inHours >= 1) return 'منذ ${diff.inHours} ${diff.inHours == 1 ? 'ساعة' : 'ساعات'}';
+      if (diff.inMinutes >= 1) return 'منذ ${diff.inMinutes} دقيقة';
+      return 'الآن';
+    } catch (_) {
+      return iso;
+    }
+  }
 
   factory ReferralSummary.fromJson(Map<String, dynamic> j) => ReferralSummary(
         id: j['referralId'] ?? j['id'] ?? '',
         status: j['status'] ?? '',
         riskLevel: j['riskLevel'] ?? 'LOW',
         primaryDiagnosis: j['primaryDiagnosis'] ?? '',
-        createdAt: j['createdAt'] ?? '',
+        createdAt: _formatDate(j['createdAt'] ?? ''),
         hasStage2: j['stage2RequestedAt'] != null,
+        chatEnabled: j['chatEnabled'] ?? false,
       );
 }
 
@@ -294,11 +313,20 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _navIndex,
         onTap: (i) {
-          if (i == 3) {
+          if (i == 0) {
+            setState(() => _navIndex = 0);
+          } else if (i == 1) {
+            final referrals = ref.read(referralsProvider).valueOrNull;
+            if (referrals != null && referrals.isNotEmpty) {
+              context.push('/referral/${referrals.first.id}');
+            }
+            setState(() => _navIndex = 1);
+          } else if (i == 2) {
+            context.push('/patient/chats');
+            setState(() => _navIndex = 2);
+          } else if (i == 3) {
             ref.read(authProvider.notifier).logout();
             context.go('/login');
-          } else {
-            setState(() => _navIndex = i);
           }
         },
         type: BottomNavigationBarType.fixed,
