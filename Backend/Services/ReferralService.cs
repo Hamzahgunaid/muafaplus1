@@ -316,6 +316,7 @@ public class ReferralService
         var referrals = await _db.Referrals
             .Include(r => r.PatientAccess)
             .Include(r => r.Engagement)
+            .Include(r => r.Profile)
             .Where(r => r.PhysicianId == physicianId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
