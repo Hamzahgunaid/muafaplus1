@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../provider/providers/physician_auth_provider.dart';
 
 // Provider (physician/admin) login — Phase 4B
 class ProviderLoginScreen extends ConsumerStatefulWidget {
@@ -168,35 +170,46 @@ class _ProviderLoginScreenState extends ConsumerState<ProviderLoginScreen> {
                       SizedBox(
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: ref.watch(physicianAuthProvider).isLoading
+                            ? null
+                            : () async {
+                                final email = _emailController.text.trim();
+                                final password = _passwordController.text.trim();
+                                if (email.isEmpty || password.isEmpty) return;
+                                await ref.read(physicianAuthProvider.notifier)
+                                    .login(email, password);
+                                final state = ref.read(physicianAuthProvider);
+                                if (state.token != null && mounted) {
+                                  context.go('/provider/dashboard');
+                                }
+                              },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.navy600,
                             foregroundColor: AppColors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                             elevation: 0),
-                          child: Text('دخول',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700)),
+                          child: ref.watch(physicianAuthProvider).isLoading
+                            ? const SizedBox(width: 20, height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                            : Text('دخول',
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700)),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.orange500.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: AppColors.orange500.withOpacity(0.2))),
-                        child: Text(
-                          'دخول مزودي الخدمة سيكون متاحاً في التحديث القادم.',
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 12,
-                            color: AppColors.orange500,
-                            height: 1.5),
-                          textAlign: TextAlign.center),
-                      ),
+                      ref.watch(physicianAuthProvider).error != null
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              ref.watch(physicianAuthProvider).error!,
+                              style: const TextStyle(
+                                color: Colors.red, fontSize: 12),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
                     ],
                   ),
                 ),
