@@ -19,6 +19,38 @@ class ProviderDashboardScreen extends ConsumerWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF6F7FB),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: 0,
+          onTap: (i) {
+            if (i == 0) context.go('/provider/dashboard');
+            if (i == 1) context.go('/provider/referrals');
+            if (i == 2) context.go('/provider/test-scenarios');
+          },
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: const Color(0xFF1E3A72),
+          unselectedItemColor: const Color(0xFF8A93A6),
+          selectedFontSize: 10,
+          unselectedFontSize: 10,
+          elevation: 8,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'الرئيسية',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_shared_outlined),
+              activeIcon: Icon(Icons.folder_shared),
+              label: 'الإحالات',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.science_outlined),
+              activeIcon: Icon(Icons.science),
+              label: 'الاختبار',
+            ),
+          ],
+        ),
         body: RefreshIndicator(
           onRefresh: () => ref.refresh(recentReferralsProvider.future),
           child: CustomScrollView(
