@@ -11,6 +11,9 @@ import '../../features/auth/screens/provider_login_screen.dart';
 import '../../features/provider/screens/dashboard_screen.dart';
 import '../../features/provider/screens/create_referral_screen.dart';
 import '../../features/provider/screens/referrals_screen.dart';
+import '../../features/provider/screens/referral_detail_screen.dart';
+import '../../features/provider/screens/test_scenarios_screen.dart';
+import '../../features/provider/screens/create_test_scenario_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -47,6 +50,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const ProviderReferralsScreen()),
       GoRoute(path: '/provider/referrals/new',
         builder: (_, __) => const CreateReferralScreen()),
+      GoRoute(path: '/provider/referrals/:id',
+        builder: (_, state) => ProviderReferralDetailScreen(
+          referralId: state.pathParameters['id']!)),
+      GoRoute(path: '/provider/test-scenarios',
+        builder: (_, __) => const TestScenariosScreen()),
+      GoRoute(path: '/provider/test-scenarios/new',
+        builder: (_, __) => const CreateTestScenarioScreen()),
+      GoRoute(path: '/provider/test-scenarios/:id',
+        builder: (_, state) => TestScenariosScreen()),
     ],
   );
 });

@@ -183,7 +183,10 @@ class _ProviderReferralsScreenState
                           const Color(0xFF5A6478);
                         final label = _riskLabels[r.riskLevel] ?? r.riskLevel;
 
-                        return Container(
+                        return GestureDetector(
+                          onTap: () => context.push(
+                              '/provider/referrals/${r.referralId}'),
+                          child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -273,6 +276,7 @@ class _ProviderReferralsScreenState
                                 ),
                               ),
                             ],
+                          ),
                           ),
                         );
                       },
