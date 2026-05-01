@@ -237,34 +237,43 @@ class _StatsGrid extends StatelessWidget {
       .where((r) => r.status.toLowerCase() == 'completed')
       .length;
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.5,
+    return Column(
       children: [
-        _StatCard(
-          label: 'إجمالي الإحالات',
-          value: total.toString(),
-          icon: Icons.people_alt_outlined,
-          color: const Color(0xFF283481)),
-        _StatCard(
-          label: 'هذا الشهر',
-          value: activeThisMonth.toString(),
-          icon: Icons.calendar_today_outlined,
-          color: const Color(0xFF355BA7)),
-        _StatCard(
-          label: 'عبر واتساب',
-          value: viaWhatsApp.toString(),
-          icon: Icons.chat_outlined,
-          color: const Color(0xFF21A740)),
-        _StatCard(
-          label: 'مكتملة',
-          value: completed.toString(),
-          icon: Icons.check_circle_outline,
-          color: const Color(0xFFDC6B20)),
+        IntrinsicHeight(
+          child: Row(
+            children: [
+              _StatCard(
+                label: 'إجمالي الإحالات',
+                value: total.toString(),
+                icon: Icons.people_alt_outlined,
+                color: const Color(0xFF283481)),
+              const SizedBox(width: 12),
+              _StatCard(
+                label: 'هذا الشهر',
+                value: activeThisMonth.toString(),
+                icon: Icons.calendar_today_outlined,
+                color: const Color(0xFF355BA7)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        IntrinsicHeight(
+          child: Row(
+            children: [
+              _StatCard(
+                label: 'عبر واتساب',
+                value: viaWhatsApp.toString(),
+                icon: Icons.chat_outlined,
+                color: const Color(0xFF21A740)),
+              const SizedBox(width: 12),
+              _StatCard(
+                label: 'مكتملة',
+                value: completed.toString(),
+                icon: Icons.check_circle_outline,
+                color: const Color(0xFFDC6B20)),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -284,41 +293,46 @@ class _StatCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFEEF0F5)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget build(BuildContext context) => Expanded(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 100),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFEEF0F5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8)),
-              child: Icon(icon, color: color, size: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Icon(icon, color: color, size: 16),
+                ),
+                Text(value,
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: color)),
+              ],
             ),
-            Text(value,
+            const SizedBox(height: 6),
+            Text(label,
               style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: color)),
+                fontSize: 11,
+                color: const Color(0xFF5A6478)),
+              textAlign: TextAlign.right),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(label,
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 11,
-            color: const Color(0xFF5A6478)),
-          textAlign: TextAlign.right),
-      ],
+      ),
     ),
   );
 }
