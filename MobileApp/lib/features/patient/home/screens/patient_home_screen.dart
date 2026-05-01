@@ -39,7 +39,7 @@ final referralsProvider = FutureProvider<List<ReferralSummary>>((ref) async {
   if (auth.token == null) return [];
   final dio = Dio();
   final resp = await dio.get(
-    'https://muafaplus1-production.up.railway.app/api/v1/referrals/patient',
+    'https://muafaplus1-production.up.railway.app/api/v1/referrals',
     options: Options(headers: {'Authorization': 'Bearer ${auth.token}'}),
   );
   final data = resp.data['data'] as List? ?? [];
