@@ -382,6 +382,7 @@ public class ReferralService
         var referrals = await _db.Referrals
             .Include(r => r.PatientAccess)
             .Include(r => r.Engagement)
+            .Include(r => r.Profile)
             .Where(r => r.PatientAccessId == patientAccessId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
@@ -660,6 +661,7 @@ public class ReferralService
             CreatedAt           = referral.CreatedAt,
             SessionId           = referral.SessionId,
             ChatEnabled         = referral.ChatEnabled,
+            PrimaryDiagnosis    = referral.Profile != null ? referral.Profile.PrimaryDiagnosis : null,
             Engagement          = engagement == null ? null : new ReferralEngagementResponse
             {
                 MessageSentAt       = engagement.MessageSentAt,

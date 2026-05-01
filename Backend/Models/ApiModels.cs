@@ -334,6 +334,7 @@ public class ReferralResponse
     public DateTime  CreatedAt           { get; set; }
     public string?   SessionId           { get; set; }
     public bool      ChatEnabled         { get; set; }
+    public string?   PrimaryDiagnosis    { get; set; }
 
     public ReferralEngagementResponse? Engagement { get; set; }
 }
