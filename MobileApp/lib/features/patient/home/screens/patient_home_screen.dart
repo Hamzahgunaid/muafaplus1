@@ -1,228 +1,350 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:dio/dio.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
 import '../../auth/providers/auth_provider.dart';
 
+// ─── Model ────────────────────────────────────────────────
 class ReferralSummary {
   final String id;
+  final String status;
   final String riskLevel;
   final String primaryDiagnosis;
   final String createdAt;
+  final bool hasStage2;
 
   ReferralSummary({
-    required this.id, required this.riskLevel,
-    required this.primaryDiagnosis, required this.createdAt,
+    required this.id,
+    required this.status,
+    required this.riskLevel,
+    required this.primaryDiagnosis,
+    required this.createdAt,
+    required this.hasStage2,
   });
 
   factory ReferralSummary.fromJson(Map<String, dynamic> j) => ReferralSummary(
-    id: j['referralId'] ?? j['id'] ?? '',
-    riskLevel: j['riskLevel'] ?? 'LOW',
-    primaryDiagnosis: j['patientProfile']?['primaryDiagnosis'] ?? 'إحالة طبية',
-    createdAt: j['createdAt'] ?? '',
-  );
+        id: j['referralId'] ?? j['id'] ?? '',
+        status: j['status'] ?? '',
+        riskLevel: j['riskLevel'] ?? 'LOW',
+        primaryDiagnosis: j['primaryDiagnosis'] ?? '',
+        createdAt: j['createdAt'] ?? '',
+        hasStage2: j['stage2RequestedAt'] != null,
+      );
 }
 
-final referralsProvider = FutureProvider.family<List<ReferralSummary>, String>(
-  (ref, token) async {
-    final dio = Dio(BaseOptions(
-      baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    ));
+// ─── Provider ─────────────────────────────────────────────
+final referralsProvider = FutureProvider<List<ReferralSummary>>((ref) async {
+  final auth = ref.watch(authProvider);
+  if (auth.token == null) return [];
+  final dio = Dio();
+  final resp = await dio.get(
+    'https://muafaplus1-production.up.railway.app/api/v1/referrals/patient',
+    options: Options(headers: {'Authorization': 'Bearer ${auth.token}'}),
+  );
+  final data = resp.data['data'] as List? ?? [];
+  return data.map((e) => ReferralSummary.fromJson(e)).toList();
+});
 
-    final response = await dio.get('/referrals');
-    final list = response.data['data'] as List? ?? [];
-    return list.map((j) => ReferralSummary.fromJson(j)).toList();
-  },
-);
-
-class PatientHomeScreen extends ConsumerWidget {
+// ─── Screen ───────────────────────────────────────────────
+class PatientHomeScreen extends ConsumerStatefulWidget {
   const PatientHomeScreen({super.key});
 
-  Color _riskColor(String l) {
-    switch (l.toUpperCase()) {
-      case 'LOW':      return AppColors.riskLowText;
-      case 'MODERATE': return AppColors.riskModText;
-      case 'HIGH':     return AppColors.riskHighText;
-      case 'CRITICAL': return AppColors.riskCritText;
-      default:         return AppColors.riskLowText;
+  @override
+  ConsumerState<PatientHomeScreen> createState() => _PatientHomeScreenState();
+}
+
+class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
+  int _navIndex = 0;
+
+  Color _riskColor(String level) {
+    switch (level.toUpperCase()) {
+      case 'CRITICAL': return const Color(0xFFD64545);
+      case 'HIGH':     return const Color(0xFFD85A30);
+      case 'MODERATE': return const Color(0xFFB8771F);
+      default:         return const Color(0xFF197540);
     }
   }
 
-  Color _riskBg(String l) {
-    switch (l.toUpperCase()) {
-      case 'LOW':      return AppColors.riskLowBg;
-      case 'MODERATE': return AppColors.riskModBg;
-      case 'HIGH':     return AppColors.riskHighBg;
-      case 'CRITICAL': return AppColors.riskCritBg;
-      default:         return AppColors.riskLowBg;
+  Color _riskBgColor(String level) {
+    switch (level.toUpperCase()) {
+      case 'CRITICAL': return const Color(0xFFFBE5E5);
+      case 'HIGH':     return const Color(0xFFFDECE2);
+      case 'MODERATE': return const Color(0xFFFDF3E1);
+      default:         return const Color(0xFFE6F4EC);
     }
   }
 
-  String _riskLabel(String l) {
-    switch (l.toUpperCase()) {
-      case 'LOW':      return 'منخفض';
-      case 'MODERATE': return 'متوسط';
-      case 'HIGH':     return 'مرتفع';
+  String _riskLabel(String level) {
+    switch (level.toUpperCase()) {
       case 'CRITICAL': return 'حرج';
-      default:         return l;
+      case 'HIGH':     return 'مرتفع';
+      case 'MODERATE': return 'متوسط';
+      default:         return 'منخفض';
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'Stage2Complete':    return 'مكتمل';
+      case 'Stage2Requested':  return 'طلب المرحلة ٢';
+      case 'Stage1Delivered':  return 'تم الإرسال';
+      case 'FeedbackSubmitted': return 'تم التقييم';
+      default:                 return 'تم الإنشاء';
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final referralsAsync = ref.watch(referralsProvider);
     final auth = ref.watch(authProvider);
-    final token = auth.token ?? '';
-    final referralsAsync = ref.watch(referralsProvider(token));
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppColors.ink50,
-        body: Column(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F7FB),
+      body: SafeArea(
+        child: Column(
           children: [
-            // Navy gradient header
+            // ── Hero header ──────────────────────────────
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.navy700, AppColors.navy800],
+                  colors: [Color(0xFF17305F), Color(0xFF11254A)],
                 ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(24)),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
               ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                  child: Row(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row — logo + bell
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(AppStrings.homeGreeting,
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 14,
-                                color: AppColors.white.withOpacity(0.65))),
-                            Text(auth.phoneNumber ?? '',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 18, fontWeight: FontWeight.w700,
-                                color: AppColors.white)),
-                            const SizedBox(height: 4),
-                            Text(AppStrings.homeSubtitle,
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 13,
-                                color: AppColors.white.withOpacity(0.55))),
-                          ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'معافى+',
+                          style: TextStyle(
+                            color: Color(0xFF1E3A72),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                      // Bell icon
                       Container(
-                        width: 40, height: 40,
+                        width: 36, height: 36,
                         decoration: BoxDecoration(
-                          color: AppColors.white.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        child: Stack(alignment: Alignment.center, children: [
-                          const Icon(Icons.notifications_outlined,
-                            color: AppColors.white, size: 22),
-                          Positioned(top: 8, left: 8,
-                            child: Container(
-                              width: 8, height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.orange500,
-                                shape: BoxShape.circle),
-                            )),
-                        ]),
+                        child: const Icon(Icons.notifications_outlined,
+                            color: Colors.white, size: 18),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Greeting
+                  const Text('مرحباً،',
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${auth.phoneNumber ?? 'المريض'} 👋',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('خطة الرعاية الخاصة بك جاهزة',
+                      style: TextStyle(color: Colors.white60, fontSize: 11)),
+                  const SizedBox(height: 18),
+                  // Reading progress card
+                  referralsAsync.when(
+                    data: (referrals) {
+                      final total = referrals.length;
+                      final done = referrals
+                          .where((r) =>
+                              r.status == 'FeedbackSubmitted' ||
+                              r.status == 'Stage2Complete')
+                          .length;
+                      final pct = total == 0 ? 0.0 : done / total;
+                      return Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: Colors.white.withOpacity(0.12)),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('تقدم القراءة',
+                                    style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12)),
+                                Text('$done / $total',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: LinearProgressIndicator(
+                                value: pct,
+                                backgroundColor:
+                                    Colors.white.withOpacity(0.15),
+                                valueColor:
+                                    const AlwaysStoppedAnimation<Color>(
+                                        Color(0xFF3FA868)),
+                                minHeight: 5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox(height: 48),
+                    error: (_, __) => const SizedBox(height: 48),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Referral list ────────────────────────────
+            Expanded(
+              child: referralsAsync.when(
+                data: (referrals) {
+                  if (referrals.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inbox_outlined,
+                              size: 48, color: Color(0xFFB7BDCB)),
+                          SizedBox(height: 12),
+                          Text('لا توجد إحالات بعد',
+                              style: TextStyle(
+                                  color: Color(0xFF8A93A6), fontSize: 14)),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                    itemCount: referrals.length,
+                    itemBuilder: (ctx, i) {
+                      final r = referrals[i];
+                      return _ReferralCard(
+                        referral: r,
+                        riskColor: _riskColor(r.riskLevel),
+                        riskBgColor: _riskBgColor(r.riskLevel),
+                        riskLabel: _riskLabel(r.riskLevel),
+                        statusLabel: _statusLabel(r.status),
+                        onTap: () => context.push('/referral/${r.id}'),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(
+                    child: CircularProgressIndicator(
+                        color: Color(0xFF1E3A72))),
+                error: (e, _) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off_outlined,
+                          size: 40, color: Color(0xFFB7BDCB)),
+                      const SizedBox(height: 12),
+                      const Text('تعذّر تحميل البيانات',
+                          style: TextStyle(
+                              color: Color(0xFF5A6478), fontSize: 14)),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () => ref.refresh(referralsProvider),
+                        child: const Text('إعادة المحاولة',
+                            style: TextStyle(color: Color(0xFF1E3A72))),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-
-            // Referrals list
-            Expanded(
-              child: referralsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator(
-                  color: AppColors.navy600)),
-                error: (e, _) => Center(child: Text(
-                  'حدث خطأ في تحميل البيانات',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    color: AppColors.ink500))),
-                data: (list) {
-                  if (list.isEmpty) {
-                    return Center(child: Text(AppStrings.noReferrals,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 15, color: AppColors.ink400)));
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: list.length,
-                    itemBuilder: (_, i) {
-                      final r = list[i];
-                      return _ReferralCard(
-                        referral: r,
-                        riskColor: _riskColor(r.riskLevel),
-                        riskBg: _riskBg(r.riskLevel),
-                        riskLabel: _riskLabel(r.riskLevel),
-                        onTap: () => context.push('/referral/${r.id}'),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
           ],
         ),
+      ),
 
-        bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            border: Border(top: BorderSide(color: AppColors.ink100))),
-          child: SafeArea(
-            top: false,
-            child: SizedBox(
-              height: 60,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _NavItem(icon: Icons.home_outlined,
-                    label: 'الرئيسية', active: true),
-                  _NavItem(icon: Icons.article_outlined, label: 'مقالاتي'),
-                  _NavItem(icon: Icons.chat_bubble_outline, label: 'اسأل'),
-                  _NavItem(
-                    icon: Icons.logout_outlined, label: AppStrings.logout,
-                    onTap: () => ref.read(authProvider.notifier).logout()),
-                ],
-              ),
-            ),
-          ),
-        ),
+      // ── Bottom nav ───────────────────────────────────
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _navIndex,
+        onTap: (i) {
+          if (i == 3) {
+            ref.read(authProvider.notifier).logout();
+            context.go('/login');
+          } else {
+            setState(() => _navIndex = i);
+          }
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF1E3A72),
+        unselectedItemColor: const Color(0xFF8A93A6),
+        selectedFontSize: 10,
+        unselectedFontSize: 10,
+        elevation: 8,
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'الرئيسية'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.article_outlined),
+              activeIcon: Icon(Icons.article),
+              label: 'مقالاتي'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              activeIcon: Icon(Icons.chat_bubble),
+              label: 'اسأل'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.logout),
+              label: 'خروج'),
+        ],
       ),
     );
   }
 }
 
+// ─── Referral Card Widget ─────────────────────────────────
 class _ReferralCard extends StatelessWidget {
   final ReferralSummary referral;
-  final Color riskColor, riskBg;
+  final Color riskColor;
+  final Color riskBgColor;
   final String riskLabel;
+  final String statusLabel;
   final VoidCallback onTap;
 
   const _ReferralCard({
-    required this.referral, required this.riskColor,
-    required this.riskBg, required this.riskLabel,
+    required this.referral,
+    required this.riskColor,
+    required this.riskBgColor,
+    required this.riskLabel,
+    required this.statusLabel,
     required this.onTap,
   });
 
@@ -232,111 +354,137 @@ class _ReferralCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.ink100),
-          boxShadow: const [BoxShadow(
-            color: Color(0x0F0E1726), blurRadius: 20,
-            offset: Offset(0, 4))],
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEF0F5)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0E1726).withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.orange500.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.auto_awesome,
-                  color: AppColors.orange500, size: 20),
+            // Risk accent bar
+            Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: riskColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
               ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(referral.primaryDiagnosis,
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 15, fontWeight: FontWeight.w600,
-                      color: AppColors.ink900),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(AppStrings.aiGenerated,
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 11, color: AppColors.orange500,
-                      fontWeight: FontWeight.w500)),
+                  // Top row — diagnosis + risk badge
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE6F4EC),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.auto_awesome,
+                            size: 16, color: Color(0xFF197540)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              referral.primaryDiagnosis.isNotEmpty
+                                  ? referral.primaryDiagnosis
+                                  : 'إحالة طبية',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0E1726),
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'مولَّد بواسطة AI',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF197540)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Risk badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: riskBgColor,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'خطر $riskLabel',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: riskColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Bottom row — status + date + arrow
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF0F5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF5A6478),
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.access_time,
+                          size: 11, color: Color(0xFFB7BDCB)),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          referral.createdAt,
+                          style: const TextStyle(
+                              fontSize: 10, color: Color(0xFF8A93A6)),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Icon(Icons.chevron_left,
+                          size: 16, color: Color(0xFFB7BDCB)),
+                    ],
+                  ),
                 ],
-              )),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: riskBg,
-                  borderRadius: BorderRadius.circular(999)),
-                child: Text(riskLabel,
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    color: riskColor)),
-              ),
-            ]),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity, height: 40,
-              child: ElevatedButton(
-                onPressed: onTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.navy600,
-                  foregroundColor: AppColors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                  elevation: 0),
-                child: Text(AppStrings.viewContent,
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback? onTap;
-
-  const _NavItem({
-    required this.icon, required this.label,
-    this.active = false, this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon,
-            color: active ? AppColors.navy600 : AppColors.ink400, size: 24),
-          const SizedBox(height: 2),
-          Text(label,
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 10, fontWeight: FontWeight.w500,
-              color: active ? AppColors.navy600 : AppColors.ink400)),
-          if (active)
-            Container(
-              margin: const EdgeInsets.only(top: 3),
-              width: 16, height: 2,
-              decoration: BoxDecoration(
-                color: AppColors.navy600,
-                borderRadius: BorderRadius.circular(2))),
-        ],
       ),
     );
   }
