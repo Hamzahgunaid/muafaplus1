@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,14 +25,21 @@ class TestScenario {
   });
 
   factory TestScenario.fromJson(Map<String, dynamic> j) {
-    final patientData = j['patientData'] as Map<String, dynamic>? ?? {};
+    Map<String, dynamic> patientData = {};
+    try {
+      final raw = j['patientDataJson'] as String? ?? '';
+      if (raw.isNotEmpty) {
+        patientData = json.decode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+
     return TestScenario(
-      scenarioId: j['scenarioId'] ?? j['id'] ?? '',
-      primaryDiagnosis: patientData['primaryDiagnosis'] ?? '',
-      riskLevel: j['riskLevel'] ?? 'LOW',
-      status: j['status'] ?? '',
-      createdAt: j['createdAt'] ?? '',
-      hasEvaluation: j['hasEvaluation'] ?? false,
+      scenarioId: j['scenarioId']?.toString() ?? '',
+      primaryDiagnosis: patientData['primaryDiagnosis'] as String? ?? '',
+      riskLevel: j['riskLevel'] as String? ?? 'LOW',
+      status: j['status'] as String? ?? '',
+      createdAt: j['createdAt'] as String? ?? '',
+      hasEvaluation: j['evaluation'] != null,
     );
   }
 
