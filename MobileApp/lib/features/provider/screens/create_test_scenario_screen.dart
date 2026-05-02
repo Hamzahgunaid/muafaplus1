@@ -15,19 +15,18 @@ class CreateTestScenarioScreen extends ConsumerStatefulWidget {
 class _CreateTestScenarioScreenState
     extends ConsumerState<CreateTestScenarioScreen> {
   final _diagnosisCtrl      = TextEditingController();
-  final _ageCtrl            = TextEditingController();
   final _comorbiditiesCtrl  = TextEditingController();
   final _medicationsCtrl    = TextEditingController();
   final _allergiesCtrl      = TextEditingController();
   final _restrictionsCtrl   = TextEditingController();
 
+  String? _selectedAgeGroup;
   bool _isLoading = false;
   String? _error;
 
   @override
   void dispose() {
     _diagnosisCtrl.dispose();
-    _ageCtrl.dispose();
     _comorbiditiesCtrl.dispose();
     _medicationsCtrl.dispose();
     _allergiesCtrl.dispose();
@@ -37,8 +36,8 @@ class _CreateTestScenarioScreenState
 
   Future<void> _submit() async {
     if (_diagnosisCtrl.text.trim().isEmpty ||
-        _ageCtrl.text.trim().isEmpty) {
-      setState(() => _error = 'يرجى إدخال التشخيص والعمر');
+        _selectedAgeGroup == null) {
+      setState(() => _error = 'يرجى إدخال التشخيص واختيار الفئة العمرية');
       return;
     }
 
@@ -51,7 +50,7 @@ class _CreateTestScenarioScreenState
         'https://muafaplus1-production.up.railway.app/api/v1/test-scenarios',
         data: {
           'primaryDiagnosis':   _diagnosisCtrl.text.trim(),
-          'ageGroup':           _ageCtrl.text.trim(),
+          'ageGroup':           _selectedAgeGroup!,
           'comorbidities':      _comorbiditiesCtrl.text.trim(),
           'currentMedications': _medicationsCtrl.text.trim(),
           'allergies':          _allergiesCtrl.text.trim(),
@@ -139,10 +138,59 @@ class _CreateTestScenarioScreenState
                       controller: _diagnosisCtrl,
                       hint: 'مثال: سكري من النوع الثاني',
                     ),
-                    _FormField(
-                      label: 'الفئة العمرية *',
-                      controller: _ageCtrl,
-                      hint: 'مثال: 40-50 سنة',
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('الفئة العمرية *',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2D3748))),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            value: _selectedAgeGroup,
+                            decoration: InputDecoration(
+                              hintText: 'اختر الفئة العمرية',
+                              hintStyle: const TextStyle(
+                                  color: Color(0xFFB7BDCB), fontSize: 13),
+                              filled: true,
+                              fillColor: const Color(0xFFF6F7FB),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: Color(0xFFDFE2EA)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: Color(0xFFDFE2EA)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFF1E3A72), width: 1.5),
+                              ),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'رضيع (0-2 سنة)', child: Text('رضيع (0-2 سنة)')),
+                              DropdownMenuItem(value: 'طفل (3-12 سنة)', child: Text('طفل (3-12 سنة)')),
+                              DropdownMenuItem(value: 'مراهق (13-17 سنة)', child: Text('مراهق (13-17 سنة)')),
+                              DropdownMenuItem(value: 'شاب (18-30 سنة)', child: Text('شاب (18-30 سنة)')),
+                              DropdownMenuItem(value: 'بالغ (31-50 سنة)', child: Text('بالغ (31-50 سنة)')),
+                              DropdownMenuItem(value: 'كهل (51-65 سنة)', child: Text('كهل (51-65 سنة)')),
+                              DropdownMenuItem(value: 'مسن (فوق 65 سنة)', child: Text('مسن (فوق 65 سنة)')),
+                            ],
+                            onChanged: (v) => setState(() => _selectedAgeGroup = v),
+                            style: const TextStyle(
+                                fontSize: 14, color: Color(0xFF0E1726)),
+                            isExpanded: true,
+                          ),
+                        ],
+                      ),
                     ),
                     _FormField(
                       label: 'الأمراض المصاحبة',
