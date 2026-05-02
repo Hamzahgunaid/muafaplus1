@@ -66,6 +66,7 @@ class TestScenario {
 
 final testScenariosProvider = FutureProvider<List<TestScenario>>((ref) async {
   final auth = ref.watch(physicianAuthProvider);
+  if (auth.isInitializing) return [];
   if (auth.token == null) return [];
   final dio = Dio();
   final resp = await dio.get(

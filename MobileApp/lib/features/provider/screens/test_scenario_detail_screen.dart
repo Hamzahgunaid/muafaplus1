@@ -103,6 +103,21 @@ class ScenarioArticle {
 final scenarioDetailProvider =
     FutureProvider.family<ScenarioDetail, String>((ref, scenarioId) async {
   final auth = ref.watch(physicianAuthProvider);
+  if (auth.isInitializing) return ScenarioDetail(
+    scenarioId: scenarioId,
+    primaryDiagnosis: '',
+    age: '',
+    comorbidities: '',
+    currentMedications: '',
+    allergies: '',
+    medicalRestrictions: '',
+    riskLevel: 'LOW',
+    status: '',
+    createdAt: '',
+    stage1Summary: '',
+    articles: [],
+    hasEvaluation: false,
+  );
   if (auth.token == null) throw Exception('Not authenticated');
   final dio = Dio();
   final resp = await dio.get(
@@ -149,12 +164,6 @@ class TestScenarioDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(scenarioDetailProvider(scenarioId));
-
-    ref.listen(physicianAuthProvider, (prev, next) {
-      if (prev?.isInitializing == true && next.isInitializing == false) {
-        ref.refresh(scenarioDetailProvider(scenarioId));
-      }
-    });
 
     return Directionality(
       textDirection: TextDirection.rtl,

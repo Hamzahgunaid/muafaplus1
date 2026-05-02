@@ -99,6 +99,7 @@ class ReferralArticle {
 final providerReferralDetailProvider =
     FutureProvider.family<ProviderReferralDetail, String>((ref, id) async {
   final auth = ref.watch(physicianAuthProvider);
+  if (auth.isInitializing) throw Exception('Initializing');
   if (auth.token == null) throw Exception('Not authenticated');
   final dio = Dio();
   final resp = await dio.get(
@@ -112,6 +113,7 @@ final providerReferralDetailProvider =
 final providerReferralArticlesProvider =
     FutureProvider.family<List<ReferralArticle>, String>((ref, referralId) async {
   final auth = ref.watch(physicianAuthProvider);
+  if (auth.isInitializing) return [];
   if (auth.token == null) return [];
   final dio = Dio();
   final resp = await dio.get(

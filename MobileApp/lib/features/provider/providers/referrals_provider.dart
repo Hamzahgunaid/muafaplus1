@@ -5,6 +5,7 @@ import 'physician_auth_provider.dart';
 
 final recentReferralsProvider = FutureProvider<List<ReferralSummary>>((ref) async {
   final auth = ref.watch(physicianAuthProvider);
+  if (auth.isInitializing) return [];
   if (!auth.isLoggedIn) return [];
 
   final dio = DioClient.instanceWithToken(auth.token!);
