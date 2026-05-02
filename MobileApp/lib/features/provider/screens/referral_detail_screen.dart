@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
@@ -88,8 +89,8 @@ class ReferralArticle {
 
   factory ReferralArticle.fromJson(Map<String, dynamic> j) => ReferralArticle(
         articleId: j['articleId'] ?? j['id'] ?? '',
-        titleAr: j['titleAr'] ?? j['title_ar'] ?? '',
-        contentAr: j['contentAr'] ?? j['content_ar'] ?? '',
+        titleAr: j['title'] ?? j['titleAr'] ?? j['title_ar'] ?? j['articleTitle'] ?? j['heading'] ?? '',
+        contentAr: j['content_ar'] ?? j['content'] ?? j['contentAr'] ?? j['articleContent'] ?? j['body'] ?? '',
       );
 }
 
@@ -109,20 +110,16 @@ final providerReferralDetailProvider =
 });
 
 final providerReferralArticlesProvider =
-    FutureProvider.family<List<ReferralArticle>, String>((ref, sessionId) async {
+    FutureProvider.family<List<ReferralArticle>, String>((ref, referralId) async {
   final auth = ref.watch(physicianAuthProvider);
   if (auth.token == null) return [];
   final dio = Dio();
   final resp = await dio.get(
-    'https://muafaplus1-production.up.railway.app/api/v1/Session/$sessionId',
+    'https://muafaplus1-production.up.railway.app/api/v1/referrals/$referralId/articles',
     options: Options(headers: {'Authorization': 'Bearer ${auth.token}'}),
   );
-  final data = resp.data['data'];
-  if (data == null) return [];
-  final articles = data['articles'] as List? ?? [];
-  return articles
-      .map((a) => ReferralArticle.fromJson(a as Map<String, dynamic>))
-      .toList();
+  final data = resp.data['data'] as List? ?? [];
+  return data.map((a) => ReferralArticle.fromJson(a as Map<String, dynamic>)).toList();
 });
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -351,50 +348,101 @@ class ProviderReferralDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // ── Articles section ─────────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFEEF0F5)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('المحتوى المولَّد',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0E1726))),
-                      const SizedBox(height: 4),
-                      const Text('مولَّد بواسطة الذكاء الاصطناعي',
-                          style: TextStyle(
-                              fontSize: 11, color: Color(0xFF8A93A6))),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF1F7),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Row(
+                Consumer(
+                  builder: (context, ref, _) {
+                    final articlesAsync = ref.watch(
+                        providerReferralArticlesProvider(detail.referralId));
+                    return articlesAsync.when(
+                      data: (articles) {
+                        if (articles.isEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFEEF0F5)),
+                            ),
+                            child: const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('المحتوى المولَّد',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF0E1726))),
+                                SizedBox(height: 12),
+                                Center(
+                                  child: Text('لا توجد مقالات بعد',
+                                      style: TextStyle(
+                                          color: Color(0xFF8A93A6),
+                                          fontSize: 13)),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Icon(Icons.auto_awesome,
-                                color: Color(0xFF1E3A72), size: 16),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'لعرض المحتوى الكامل والمقالات التفصيلية، افتح الإحالة من البوابة الإلكترونية',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF2D3748)),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  const Text('المحتوى المولَّد',
+                                      style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF0E1726))),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE6F4EC),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text('${articles.length} مقالات',
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF197540))),
+                                  ),
+                                ],
                               ),
                             ),
+                            ...articles.asMap().entries.map((entry) {
+                              final i = entry.key;
+                              final article = entry.value;
+                              return _ArticleCard(
+                                  article: article, index: i + 1);
+                            }),
                           ],
+                        );
+                      },
+                      loading: () => Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFEEF0F5)),
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF1E3A72)),
                         ),
                       ),
-                    ],
-                  ),
+                      error: (e, _) => Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFEEF0F5)),
+                        ),
+                        child: const Text('تعذّر تحميل المقالات',
+                            style: TextStyle(color: Color(0xFF5A6478))),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -523,4 +571,140 @@ class _TimelineStep extends StatelessWidget {
           ),
         ],
       );
+}
+
+// ─── Article card (expandable) ────────────────────────────────────────────────
+
+class _ArticleCard extends StatefulWidget {
+  final ReferralArticle article;
+  final int index;
+  const _ArticleCard({required this.article, required this.index});
+
+  @override
+  State<_ArticleCard> createState() => _ArticleCardState();
+}
+
+class _ArticleCardState extends State<_ArticleCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _expanded
+              ? const Color(0xFF1E3A72)
+              : const Color(0xFFEEF0F5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0E1726).withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF1F7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text('${widget.index}',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E3A72))),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.article.titleAr.isNotEmpty
+                          ? widget.article.titleAr
+                          : 'مقال ${widget.index}',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0E1726)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: const Color(0xFF8A93A6),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded)
+            Container(
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Color(0xFFEEF0F5)),
+                ),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: MarkdownBody(
+                  data: widget.article.contentAr.isNotEmpty
+                      ? widget.article.contentAr
+                      : '_لا يوجد محتوى_',
+                  styleSheet: MarkdownStyleSheet(
+                    h1: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0E1726)),
+                    h2: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E3A72)),
+                    h3: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D3748)),
+                    p: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF2D3748),
+                        height: 1.7),
+                    listBullet: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF2D3748)),
+                    strong: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0E1726)),
+                    blockquoteDecoration: BoxDecoration(
+                      color: const Color(0xFFEEF1F7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: const Border(
+                        right: BorderSide(
+                            color: Color(0xFF1E3A72), width: 3),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
