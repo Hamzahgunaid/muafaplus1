@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/dio_client.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:js' as js;
 
 class PhysicianAuthState {
   final String? token;
@@ -34,16 +36,17 @@ class PhysicianAuthState {
     bool? isLoading,
     String? error,
     bool? isInitializing,
-  }) => PhysicianAuthState(
-    token: token ?? this.token,
-    role: role ?? this.role,
-    fullName: fullName ?? this.fullName,
-    specialty: specialty ?? this.specialty,
-    tenantId: tenantId ?? this.tenantId,
-    isLoading: isLoading ?? this.isLoading,
-    error: error ?? this.error,
-    isInitializing: isInitializing ?? this.isInitializing,
-  );
+  }) =>
+      PhysicianAuthState(
+        token: token ?? this.token,
+        role: role ?? this.role,
+        fullName: fullName ?? this.fullName,
+        specialty: specialty ?? this.specialty,
+        tenantId: tenantId ?? this.tenantId,
+        isLoading: isLoading ?? this.isLoading,
+        error: error ?? this.error,
+        isInitializing: isInitializing ?? this.isInitializing,
+      );
 }
 
 class PhysicianAuthNotifier extends StateNotifier<PhysicianAuthState> {
@@ -51,21 +54,55 @@ class PhysicianAuthNotifier extends StateNotifier<PhysicianAuthState> {
     _loadFromStorage();
   }
 
+  // ── Storage helpers ───────────────────────────────────
+  Future<void> _save(String key, String value) async {
+    try {
+      js.context['localStorage'].callMethod('setItem', [key, value]);
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+    }
+  }
+
+  Future<String?> _load(String key) async {
+    try {
+      final val = js.context['localStorage'].callMethod('getItem', [key]);
+      if (val != null && val.toString().isNotEmpty) return val.toString();
+    } catch (_) {}
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _remove(String key) async {
+    try {
+      js.context['localStorage'].callMethod('removeItem', [key]);
+    } catch (_) {}
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(key);
+    } catch (_) {}
+  }
+
+  // ── Load from storage on startup ─────────────────────
   Future<void> _loadFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('muafa_provider_token');
+    final token = await _load('muafa_provider_token');
     if (token != null) {
       state = state.copyWith(
         token: token,
-        role: prefs.getString('muafa_provider_role'),
-        fullName: prefs.getString('muafa_provider_fullname'),
-        specialty: prefs.getString('muafa_provider_specialty'),
-        tenantId: prefs.getString('muafa_provider_tenantid'),
+        role: await _load('muafa_provider_role'),
+        fullName: await _load('muafa_provider_fullname'),
+        specialty: await _load('muafa_provider_specialty'),
+        tenantId: await _load('muafa_provider_tenantid'),
       );
     }
     state = state.copyWith(isInitializing: false);
   }
 
+  // ── Login ─────────────────────────────────────────────
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -81,12 +118,11 @@ class PhysicianAuthNotifier extends StateNotifier<PhysicianAuthState> {
       final specialty = data['specialty'] as String? ?? '';
       final tenantId = data['tenantId'] as String? ?? '';
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('muafa_provider_token', token);
-      await prefs.setString('muafa_provider_role', role);
-      await prefs.setString('muafa_provider_fullname', fullName);
-      await prefs.setString('muafa_provider_specialty', specialty);
-      await prefs.setString('muafa_provider_tenantid', tenantId);
+      await _save('muafa_provider_token', token);
+      await _save('muafa_provider_role', role);
+      await _save('muafa_provider_fullname', fullName);
+      await _save('muafa_provider_specialty', specialty);
+      await _save('muafa_provider_tenantid', tenantId);
 
       state = state.copyWith(
         token: token,
@@ -106,14 +142,14 @@ class PhysicianAuthNotifier extends StateNotifier<PhysicianAuthState> {
     }
   }
 
+  // ── Logout ────────────────────────────────────────────
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('muafa_provider_token');
-    await prefs.remove('muafa_provider_role');
-    await prefs.remove('muafa_provider_fullname');
-    await prefs.remove('muafa_provider_specialty');
-    await prefs.remove('muafa_provider_tenantid');
-    state = const PhysicianAuthState();
+    await _remove('muafa_provider_token');
+    await _remove('muafa_provider_role');
+    await _remove('muafa_provider_fullname');
+    await _remove('muafa_provider_specialty');
+    await _remove('muafa_provider_tenantid');
+    state = const PhysicianAuthState(isInitializing: false);
   }
 }
 
