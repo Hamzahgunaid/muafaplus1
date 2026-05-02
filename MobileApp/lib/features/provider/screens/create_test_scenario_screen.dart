@@ -51,7 +51,7 @@ class _CreateTestScenarioScreenState
         'https://muafaplus1-production.up.railway.app/api/v1/test-scenarios',
         data: {
           'primaryDiagnosis':   _diagnosisCtrl.text.trim(),
-          'age':                _ageCtrl.text.trim(),
+          'ageGroup':           _ageCtrl.text.trim(),
           'comorbidities':      _comorbiditiesCtrl.text.trim(),
           'currentMedications': _medicationsCtrl.text.trim(),
           'allergies':          _allergiesCtrl.text.trim(),
@@ -140,9 +140,9 @@ class _CreateTestScenarioScreenState
                       hint: 'مثال: سكري من النوع الثاني',
                     ),
                     _FormField(
-                      label: 'العمر *',
+                      label: 'الفئة العمرية *',
                       controller: _ageCtrl,
-                      hint: 'مثال: 45 سنة',
+                      hint: 'مثال: 40-50 سنة',
                     ),
                     _FormField(
                       label: 'الأمراض المصاحبة',
