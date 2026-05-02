@@ -10,6 +10,7 @@ class PhysicianAuthState {
   final String? tenantId;
   final bool isLoading;
   final String? error;
+  final bool isInitializing;
 
   const PhysicianAuthState({
     this.token,
@@ -19,6 +20,7 @@ class PhysicianAuthState {
     this.tenantId,
     this.isLoading = false,
     this.error,
+    this.isInitializing = true,
   });
 
   bool get isLoggedIn => token != null;
@@ -31,6 +33,7 @@ class PhysicianAuthState {
     String? tenantId,
     bool? isLoading,
     String? error,
+    bool? isInitializing,
   }) => PhysicianAuthState(
     token: token ?? this.token,
     role: role ?? this.role,
@@ -38,7 +41,8 @@ class PhysicianAuthState {
     specialty: specialty ?? this.specialty,
     tenantId: tenantId ?? this.tenantId,
     isLoading: isLoading ?? this.isLoading,
-    error: error,
+    error: error ?? this.error,
+    isInitializing: isInitializing ?? this.isInitializing,
   );
 }
 
@@ -59,6 +63,7 @@ class PhysicianAuthNotifier extends StateNotifier<PhysicianAuthState> {
         tenantId: prefs.getString('muafa_provider_tenantid'),
       );
     }
+    state = state.copyWith(isInitializing: false);
   }
 
   Future<bool> login(String email, String password) async {

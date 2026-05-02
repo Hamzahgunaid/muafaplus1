@@ -150,6 +150,12 @@ class TestScenarioDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(scenarioDetailProvider(scenarioId));
 
+    ref.listen(physicianAuthProvider, (prev, next) {
+      if (prev?.isInitializing == true && next.isInitializing == false) {
+        ref.refresh(scenarioDetailProvider(scenarioId));
+      }
+    });
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
