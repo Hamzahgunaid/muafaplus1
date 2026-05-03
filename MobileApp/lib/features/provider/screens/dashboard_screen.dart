@@ -327,7 +327,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 100),
+      constraints: const BoxConstraints(maxHeight: 120),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
