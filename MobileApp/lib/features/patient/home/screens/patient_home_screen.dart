@@ -151,12 +151,17 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text(
-                          'معافى+',
-                          style: TextStyle(
-                            color: Color(0xFF1E3A72),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
+                        child: Image.asset(
+                          'assets/images/muafa-logo.png',
+                          height: 20,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Text(
+                            'معافى+',
+                            style: TextStyle(
+                              color: Color(0xFF1E3A72),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),

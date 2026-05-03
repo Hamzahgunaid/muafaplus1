@@ -59,11 +59,19 @@ class _ProviderLoginScreenState extends ConsumerState<ProviderLoginScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.white,
                             borderRadius: BorderRadius.circular(12)),
-                          child: Text('معافى+',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.navy600)),
+                          child: Image.asset(
+                            'assets/images/muafa-logo-white.png',
+                            height: 48,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => const Text(
+                              'معافى+',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 20),
                         Text('دخول مزود الخدمة',
