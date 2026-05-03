@@ -24,6 +24,7 @@
 - Auth: JWT Bearer + BCrypt (providers) / Phone+Code (patients)
 - Flutter 3.41.7 — MobileApp/ folder — Chrome for dev/testing (APK deferred)
 - State/Nav/Network (Flutter): Riverpod, GoRouter, Dio, Hive, Firebase (core + messaging)
+- Flutter Web token storage: localStorage via dart:js (SharedPreferences unreliable on web)
 
 ## Architecture Workflow
 Claude (Architect) → Hamzah (Coordinator) → Claude Code (Implementer)
@@ -105,21 +106,17 @@ Old-style WHATSAPP_ACCESSTOKEN variable is NOT read by backend — use double-un
 - Meta app ID: 947161031028880
 - Sender: Meta test number +1 555 161 5779 (PhoneNumberId: 1112172131979263)
 - Business Account ID: 2052346812292213
-- TestMode: false (must remain false — test mode silently drops all messages without error)
+- TestMode: false (must remain false — test mode silently drops all messages)
 - Templates currently active in backend: hello_world (en_US) — TEMPORARY for testing
 - Real approved templates (under business account linked to +967782705557):
-  - muafa_health_notification (Marketing, 3 vars: patient name, physician name, app link)
-  - muafa_access_code1 (Authentication, 1 var: 4-digit code)
+  muafa_health_notification (Marketing, 3 vars: patient name, physician name, app link)
+  muafa_access_code1 (Authentication, 1 var: 4-digit code)
 - Verified test recipient: +967700853980
-- Two-message delivery: Message 1 = health notification, Message 2 = access code
+- Error codes: #131030=recipient not whitelisted, #132001=template mismatch,
+  #131005=expired token, #138000=call button not enabled on test number
 - PENDING: Migrate sender to real Muafa+ number (+967782705557)
-- PENDING: Generate permanent System User token (current token expires hourly)
+- PENDING: Generate permanent System User token (expires hourly)
 - PENDING: Restore real templates after number migration
-- Error codes reference:
-  - #131030 = recipient not in Meta whitelist (development mode restriction)
-  - #132001 = template name or language code mismatch
-  - #131005 = expired or invalid access token (regenerate token in Meta API Setup)
-  - #138000 = template has call button not enabled on test number
 
 ## JWT Claims Structure
 ```json
@@ -298,22 +295,42 @@ All keys cleared on logout.
 - Physician.ChatEnabled gate removed — chat gated by TenantSettings.ChatEnabled only
 - Admin settings toggle saves correctly (whatsAppEnabled ?? false guard added)
 
-### Phase 4 — Flutter Mobile App (Complete — Patient Side)
-- MobileApp/ folder — Flutter 3.41.7, Android SDK 36.1.0
-- Patient flow verified end-to-end in Chrome:
-  Login (navy hero + white sheet + 4-box OTP) →
-  Home (referral cards with risk badges) →
-  Referral Detail (Stage 1 summary + Stage 2 trigger) →
-  Article Reader (markdown rendering + scroll tracking + like/dislike) →
-  Feedback (5-star rating + tag chips) →
-  Success screen
-- Auth race condition resolved: isInitializing state in AuthState blocks
-  GoRouter redirect until _checkExistingToken() completes
-- JWT passed via Riverpod authProvider.token to fresh Dio instances
-  (never from SharedPreferences)
-- GET /referrals/{id} uses patient-scoped GetReferralForPatientAsync
-- Article titles extracted via ExtractMarkdownTitle() from first # heading in content_ar
-- Provider side (physician dashboard, referral creation): PENDING next deliverable
+### Phase 4 — Flutter Mobile App (Complete)
+
+#### Patient Side (Complete)
+- Login screen: navy hero + white sheet + 4-box OTP
+- Home screen: navy gradient hero, reading progress bar, referral cards,
+  bottom nav (الرئيسية, مقالاتي, اسأل, خروج)
+- Referral detail: Stage 1 summary + Stage 2 trigger + article reader
+- Article reader: markdown rendering + scroll tracking + like/dislike
+- Feedback screen: 5-star rating + tag chips
+- Chat list screen: per-referral thread list
+- Auth: isInitializing guard blocks GoRouter until _checkExistingToken completes
+- Token stored via flutter.patient_token in localStorage
+
+#### Provider Side (Complete)
+- Login screen: email + password, JWT stored via localStorage (dart:js)
+- Dashboard: navy header, 4-stat grid, risk distribution bar,
+  engagement funnel, AI activity card, recent referrals list
+- Referrals list: filter tabs (الكل/حرج/مرتفع/متوسط/منخفض), pull-to-refresh
+- Referral detail: patient card, engagement timeline, expandable articles
+  with MarkdownBody rendering
+- Referral creation form: 6 fields, success navigation
+- Test scenarios list: diagnosis titles, risk badges, timestamps
+- Create test scenario: 6 fields + age group dropdown
+- Test scenario detail: patient profile card, Stage 1 expandable summary,
+  Stage 2 articles (when available), sticky evaluation button
+- Evaluation form: 4 star ratings + 3 yes/no + free text → POST to backend
+- Bottom nav: الرئيسية, الإحالات, الاختبار
+- Token persistence: localStorage via dart:js fixes Flutter Web SharedPreferences bug
+- isInitializing guard added to PhysicianAuthState — mirrors patient side pattern
+
+#### Key Technical Patterns
+- All provider FutureProviders guard on auth.isInitializing before API calls
+- Backend patientDataJson uses PascalCase keys (PrimaryDiagnosis, AgeGroup etc.)
+- generatedContentJson uses summary_article (snake_case) for Stage 1 content
+- Physician token keys: muafa_provider_token, muafa_provider_role,
+  muafa_provider_fullname, muafa_provider_specialty, muafa_provider_tenantid
 
 ## Pending — Phase 3 Remaining
 - [ ] Streaming SSE frontend for test-scenarios/new page
@@ -325,13 +342,13 @@ All keys cleared on logout.
 - [ ] Assistant-physician linking — test dropdown form in production
 - [ ] Invitation codes — test copy button and generation in production
 
-## Pending — Phase 4 Remaining
-- [ ] WhatsApp: migrate sender from Meta test number to real Muafa+ number (+967782705557)
-- [ ] WhatsApp: generate permanent System User token (current token expires hourly)
+## Pending — Flutter
+- [ ] WhatsApp: migrate sender to real Muafa+ number (+967782705557)
+- [ ] WhatsApp: generate permanent System User token (expires hourly)
 - [ ] WhatsApp: restore real templates (muafa_health_notification + muafa_access_code1)
-- [ ] Flutter Phase 4: provider side — physician login, dashboard, referral creation
-- [ ] Flutter Phase 4: Firebase push notifications integration
-- [ ] Flutter Phase 4: offline content caching with Hive
+- [ ] Firebase push notifications integration
+- [ ] Offline content caching with Hive
+- [ ] Scenario list titles — old records show generic title (data issue, not code)
 
 ## Pending — Phase 5
 - [ ] pgvector Layer 2 near-match vector search (after 50 patients)
