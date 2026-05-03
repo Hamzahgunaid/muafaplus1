@@ -35,7 +35,8 @@ class TestScenario {
 
     return TestScenario(
       scenarioId: j['scenarioId']?.toString() ?? '',
-      primaryDiagnosis: patientData['primaryDiagnosis'] as String? ?? '',
+      primaryDiagnosis: patientData['PrimaryDiagnosis'] as String? ??
+          patientData['primaryDiagnosis'] as String? ?? '',
       riskLevel: j['riskLevel'] as String? ?? 'LOW',
       status: j['status'] as String? ?? '',
       createdAt: j['createdAt'] as String? ?? '',
