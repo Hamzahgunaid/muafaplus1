@@ -51,7 +51,8 @@ class ScenarioDetail {
       final raw = j['generatedContentJson'] as String? ?? '';
       if (raw.isNotEmpty) {
         final content = json.decode(raw) as Map<String, dynamic>;
-        stage1Summary = content['summaryArticle'] as String? ??
+        stage1Summary = content['summary_article'] as String? ??
+            content['summaryArticle'] as String? ??
             content['summary'] as String? ??
             content['content'] as String? ?? '';
       }
@@ -61,8 +62,15 @@ class ScenarioDetail {
     try {
       final raw = j['generatedArticlesJson'] as String? ?? '';
       if (raw.isNotEmpty) {
-        final list = json.decode(raw) as List;
-        articles = list
+        final decoded = json.decode(raw);
+        List articleList = [];
+        if (decoded is List) {
+          articleList = decoded;
+        } else if (decoded is Map) {
+          articleList = decoded['articles'] as List? ??
+                        decoded['items'] as List? ?? [];
+        }
+        articles = articleList
             .map((a) => ScenarioArticle.fromJson(a as Map<String, dynamic>))
             .toList();
       }
@@ -70,12 +78,12 @@ class ScenarioDetail {
 
     return ScenarioDetail(
       scenarioId: j['scenarioId']?.toString() ?? '',
-      primaryDiagnosis: patientData['primaryDiagnosis'] as String? ?? '',
-      age: patientData['age'] as String? ?? '',
-      comorbidities: patientData['comorbidities'] as String? ?? '',
-      currentMedications: patientData['currentMedications'] as String? ?? '',
-      allergies: patientData['allergies'] as String? ?? '',
-      medicalRestrictions: patientData['medicalRestrictions'] as String? ?? '',
+      primaryDiagnosis: patientData['PrimaryDiagnosis'] as String? ?? patientData['primaryDiagnosis'] as String? ?? '',
+      age: patientData['AgeGroup'] as String? ?? patientData['age'] as String? ?? patientData['Age'] as String? ?? '',
+      comorbidities: patientData['Comorbidities'] as String? ?? patientData['comorbidities'] as String? ?? '',
+      currentMedications: patientData['CurrentMedications'] as String? ?? patientData['currentMedications'] as String? ?? '',
+      allergies: patientData['Allergies'] as String? ?? patientData['allergies'] as String? ?? '',
+      medicalRestrictions: patientData['MedicalRestrictions'] as String? ?? patientData['medicalRestrictions'] as String? ?? '',
       riskLevel: j['riskLevel'] as String? ?? 'LOW',
       status: j['status'] as String? ?? '',
       createdAt: j['createdAt'] as String? ?? '',
@@ -93,8 +101,8 @@ class ScenarioArticle {
   ScenarioArticle({required this.title, required this.content});
 
   factory ScenarioArticle.fromJson(Map<String, dynamic> j) => ScenarioArticle(
-        title: j['title_ar'] ?? j['titleAr'] ?? j['title'] ?? '',
-        content: j['content_ar'] ?? j['contentAr'] ?? j['content'] ?? '',
+        title: j['title_ar'] ?? j['titleAr'] ?? j['title'] ?? j['Title'] ?? '',
+        content: j['content_ar'] ?? j['contentAr'] ?? j['content'] ?? j['Content'] ?? '',
       );
 }
 
