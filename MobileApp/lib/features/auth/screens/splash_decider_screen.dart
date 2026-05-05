@@ -13,15 +13,19 @@ class SplashDeciderScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashDeciderScreenState extends ConsumerState<SplashDeciderScreen> {
-  @override
-  void initState() {
-    super.initState();
+  bool _navigated = false;
+
+  void _tryNavigate() {
+    if (_navigated || !mounted) return;
+    final auth = ref.read(authProvider);
+    final physician = ref.read(physicianAuthProvider);
+    if (auth.isInitializing || physician.isInitializing) return;
+    _navigated = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = ref.read(authProvider);
-      final physicianState = ref.read(physicianAuthProvider);
+      if (!mounted) return;
       if (auth.token != null) {
         context.go('/home');
-      } else if (physicianState.token != null) {
+      } else if (physician.token != null) {
         context.go('/provider/dashboard');
       } else {
         context.go('/login');
@@ -30,9 +34,17 @@ class _SplashDeciderScreenState extends ConsumerState<SplashDeciderScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryNavigate());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen(authProvider, (_, __) => _tryNavigate());
+    ref.listen(physicianAuthProvider, (_, __) => _tryNavigate());
     return const Scaffold(
-      backgroundColor: Color(0xFF283481),
+      backgroundColor: Color(0xFF1E3A72),
       body: Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),
