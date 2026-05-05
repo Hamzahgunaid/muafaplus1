@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/article_outline_card.dart';
 import '../../../../features/patient/auth/providers/auth_provider.dart';
 
 // ── Models ──────────────────────────────────────────────────────────────────
@@ -365,20 +366,32 @@ class _ReferralDetailScreenState
                 const SizedBox(height: 8),
 
                 if (detail.stage2Status == 'NotRequested')
-                  _Stage2TriggerCard(
-                    isLoading: _triggeringStage2,
-                    onTap: _triggerStage2,
+                  ArticleOutlineCard(
+                    index: 1,
+                    title: 'المقالات التفصيلية',
+                    state: _triggeringStage2
+                        ? ArticleOutlineState.generating
+                        : ArticleOutlineState.notGenerated,
+                    onGenerate: _triggeringStage2 ? null : _triggerStage2,
                   )
                 else if (detail.stage2Status == 'Generating' ||
                          detail.stage2Status == 'Pending')
-                  _GeneratingCard()
+                  const ArticleOutlineCard(
+                    index: 1,
+                    title: 'المقالات التفصيلية',
+                    state: ArticleOutlineState.generating,
+                  )
                 else ...[
-                  ...stage2.map((article) => _ArticleCard(
-                    article: article,
-                    isStage1: false,
-                    onTap: article.isReady
-                      ? () => context.push('/article/${detail.id}/${article.id}')
-                      : null,
+                  ...stage2.asMap().entries.map((e) => ArticleOutlineCard(
+                    key: ValueKey(e.value.id),
+                    index: e.key + 1,
+                    title: e.value.title,
+                    state: e.value.isReady
+                        ? ArticleOutlineState.generated
+                        : ArticleOutlineState.generating,
+                    onView: e.value.isReady
+                        ? () => context.push('/article/${detail.id}/${e.value.id}')
+                        : null,
                   )),
                 ],
               ],
@@ -535,85 +548,3 @@ class _ArticleCard extends StatelessWidget {
   }
 }
 
-class _Stage2TriggerCard extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback onTap;
-  const _Stage2TriggerCard({required this.isLoading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.ink100),
-      ),
-      child: Column(children: [
-        Container(
-          width: 48, height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.navy600.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(14)),
-          child: const Icon(Icons.menu_book_outlined,
-            color: AppColors.navy600, size: 24),
-        ),
-        const SizedBox(height: 12),
-        Text('اطّلع على المقالات التفصيلية',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 15, fontWeight: FontWeight.w700,
-            color: AppColors.ink900),
-          textAlign: TextAlign.center),
-        const SizedBox(height: 6),
-        Text('احصل على مقالات مفصّلة تشرح حالتك بعمق',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 13, color: AppColors.ink500, height: 1.5),
-          textAlign: TextAlign.center),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity, height: 46,
-          child: ElevatedButton(
-            onPressed: isLoading ? null : onTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.navy600,
-              foregroundColor: AppColors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-              elevation: 0),
-            child: isLoading
-              ? const SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2))
-              : Text('توليد المقالات التفصيلية',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 14, fontWeight: FontWeight.w700)),
-          ),
-        ),
-      ]),
-    );
-  }
-}
-
-class _GeneratingCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.ink100)),
-      child: Row(children: [
-        const SizedBox(
-          width: 20, height: 20,
-          child: CircularProgressIndicator(
-            color: AppColors.orange500, strokeWidth: 2.5)),
-        const SizedBox(width: 14),
-        Expanded(child: Text('جارٍ توليد المقالات التفصيلية...',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 14, color: AppColors.ink700,
-            fontWeight: FontWeight.w500))),
-      ]),
-    );
-  }
-}

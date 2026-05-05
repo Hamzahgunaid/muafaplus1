@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../providers/physician_auth_provider.dart';
+import '../../../core/widgets/article_outline_card.dart';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ class ScenarioDetail {
   final String createdAt;
   final String stage1Summary;
   final List<ScenarioArticle> articles;
+  final List<String> outlineTitles;
   final bool hasEvaluation;
 
   ScenarioDetail({
@@ -36,6 +37,7 @@ class ScenarioDetail {
     required this.createdAt,
     required this.stage1Summary,
     required this.articles,
+    required this.outlineTitles,
     required this.hasEvaluation,
   });
 
@@ -47,6 +49,7 @@ class ScenarioDetail {
     } catch (_) {}
 
     String stage1Summary = '';
+    List<String> outlineTitles = [];
     try {
       final raw = j['generatedContentJson'] as String? ?? '';
       if (raw.isNotEmpty) {
@@ -55,6 +58,11 @@ class ScenarioDetail {
             content['summaryArticle'] as String? ??
             content['summary'] as String? ??
             content['content'] as String? ?? '';
+        final outlines = content['article_outlines'] as List? ?? [];
+        outlineTitles = outlines
+            .map((o) => (o as Map<String, dynamic>)['title_ar'] as String? ?? '')
+            .where((t) => t.isNotEmpty)
+            .toList();
       }
     } catch (_) {}
 
@@ -89,6 +97,7 @@ class ScenarioDetail {
       createdAt: j['createdAt'] as String? ?? '',
       stage1Summary: stage1Summary,
       articles: articles,
+      outlineTitles: outlineTitles,
       hasEvaluation: j['evaluation'] != null,
     );
   }
@@ -124,6 +133,7 @@ final scenarioDetailProvider =
     createdAt: '',
     stage1Summary: '',
     articles: [],
+    outlineTitles: [],
     hasEvaluation: false,
   );
   if (auth.token == null) throw Exception('Not authenticated');
@@ -138,9 +148,35 @@ final scenarioDetailProvider =
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-class TestScenarioDetailScreen extends ConsumerWidget {
+class TestScenarioDetailScreen extends ConsumerStatefulWidget {
   final String scenarioId;
   const TestScenarioDetailScreen({super.key, required this.scenarioId});
+
+  @override
+  ConsumerState<TestScenarioDetailScreen> createState() =>
+      _TestScenarioDetailScreenState();
+}
+
+class _TestScenarioDetailScreenState
+    extends ConsumerState<TestScenarioDetailScreen> {
+  final Set<int> _generatingIndexes = {};
+
+  Future<void> _generateArticle(int index) async {
+    setState(() => _generatingIndexes.add(index));
+    try {
+      final auth = ref.read(physicianAuthProvider);
+      final dio = Dio();
+      await dio.post(
+        'https://muafaplus1-production.up.railway.app/api/v1/test-scenarios/${widget.scenarioId}/generate-article?index=$index',
+        options: Options(headers: {'Authorization': 'Bearer ${auth.token}'}),
+      );
+      ref.invalidate(scenarioDetailProvider(widget.scenarioId));
+    } catch (_) {
+      ref.invalidate(scenarioDetailProvider(widget.scenarioId));
+    } finally {
+      if (mounted) setState(() => _generatingIndexes.remove(index));
+    }
+  }
 
   Color _riskColor(String level) {
     switch (level.toUpperCase()) {
@@ -170,8 +206,8 @@ class TestScenarioDetailScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final detailAsync = ref.watch(scenarioDetailProvider(scenarioId));
+  Widget build(BuildContext context) {
+    final detailAsync = ref.watch(scenarioDetailProvider(widget.scenarioId));
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -337,16 +373,17 @@ class TestScenarioDetailScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      _ExpandableArticle(
-                        index: 0,
+                      ArticleOutlineCard(
+                        index: 1,
                         title: 'الملخص الصحي المولَّد',
+                        state: ArticleOutlineState.generated,
                         content: detail.stage1Summary,
                       ),
                       const SizedBox(height: 16),
                     ],
 
                     // ── Stage 2 Articles ─────────────────────────────────
-                    if (detail.articles.isNotEmpty) ...[
+                    if (detail.stage1Summary.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: Row(
@@ -358,31 +395,65 @@ class TestScenarioDetailScreen extends ConsumerWidget {
                                     color: Color(0xFF0E1726))),
                             const SizedBox(width: 8),
                             const _StageBadge(label: 'المرحلة ٢'),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE6F4EC),
-                                borderRadius: BorderRadius.circular(20),
+                            if (detail.articles.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE6F4EC),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '${detail.articles.length} مقالات',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF197540)),
+                                ),
                               ),
-                              child: Text(
-                                '${detail.articles.length} مقالات',
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF197540)),
-                              ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
-                      ...detail.articles.asMap().entries.map((e) =>
-                          _ExpandableArticle(
-                            index: e.key + 1,
-                            title: e.value.title,
-                            content: e.value.content,
-                          )),
+                      if (detail.outlineTitles.isNotEmpty)
+                        ...List.generate(detail.outlineTitles.length, (i) {
+                          final hasArticle = detail.articles.length > i;
+                          final content = hasArticle &&
+                                  detail.articles[i].content.isNotEmpty
+                              ? detail.articles[i].content
+                              : null;
+                          final isGenerating = _generatingIndexes.contains(i);
+                          return ArticleOutlineCard(
+                            key: ValueKey('scenario_article_$i'),
+                            index: i + 1,
+                            title: detail.outlineTitles[i],
+                            state: isGenerating
+                                ? ArticleOutlineState.generating
+                                : (content != null
+                                    ? ArticleOutlineState.generated
+                                    : ArticleOutlineState.notGenerated),
+                            onGenerate:
+                                isGenerating ? null : () => _generateArticle(i),
+                            content: content,
+                          );
+                        })
+                      else if (detail.articles.isNotEmpty)
+                        ...detail.articles.asMap().entries.map((e) =>
+                            ArticleOutlineCard(
+                              key: ValueKey('scenario_article_${e.key}'),
+                              index: e.key + 1,
+                              title: e.value.title,
+                              state: e.value.content.isNotEmpty
+                                  ? ArticleOutlineState.generated
+                                  : ArticleOutlineState.notGenerated,
+                              onGenerate: e.value.content.isNotEmpty
+                                  ? null
+                                  : () => _generateArticle(e.key),
+                              content: e.value.content.isNotEmpty
+                                  ? e.value.content
+                                  : null,
+                            )),
                     ],
 
                     // ── Empty state ──────────────────────────────────────
@@ -423,7 +494,7 @@ class TestScenarioDetailScreen extends ConsumerWidget {
                     onPressed: detail.hasEvaluation
                         ? null
                         : () => context.push(
-                            '/provider/test-scenarios/$scenarioId/evaluate'),
+                            '/provider/test-scenarios/${widget.scenarioId}/evaluate'),
                     icon: Icon(
                       detail.hasEvaluation
                           ? Icons.check_circle
@@ -467,7 +538,7 @@ class TestScenarioDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () =>
-                      ref.refresh(scenarioDetailProvider(scenarioId)),
+                      ref.refresh(scenarioDetailProvider(widget.scenarioId)),
                   child: const Text('إعادة المحاولة',
                       style: TextStyle(color: Color(0xFF1E3A72))),
                 ),
@@ -527,148 +598,5 @@ class _StageBadge extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1E3A72))),
-      );
-}
-
-class _ExpandableArticle extends StatefulWidget {
-  final int index;
-  final String title;
-  final String content;
-  const _ExpandableArticle(
-      {required this.index, required this.title, required this.content});
-
-  @override
-  State<_ExpandableArticle> createState() => _ExpandableArticleState();
-}
-
-class _ExpandableArticleState extends State<_ExpandableArticle> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _expanded
-                ? const Color(0xFF1E3A72)
-                : const Color(0xFFEEF0F5),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0E1726).withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    if (widget.index > 0)
-                      Container(
-                        width: 28, height: 28,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF1F7),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text('${widget.index}',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1E3A72))),
-                        ),
-                      )
-                    else
-                      Container(
-                        width: 28, height: 28,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE6F4EC),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.auto_awesome,
-                            size: 14, color: Color(0xFF197540)),
-                      ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.title.isNotEmpty
-                            ? widget.title
-                            : widget.index == 0
-                                ? 'الملخص الصحي'
-                                : 'مقال ${widget.index}',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF0E1726)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      _expanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: const Color(0xFF8A93A6),
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_expanded)
-              Container(
-                decoration: const BoxDecoration(
-                  border: Border(top: BorderSide(color: Color(0xFFEEF0F5))),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: MarkdownBody(
-                    data: widget.content.isNotEmpty
-                        ? widget.content
-                        : '_لا يوجد محتوى_',
-                    styleSheet: MarkdownStyleSheet(
-                      h1: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0E1726)),
-                      h2: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E3A72)),
-                      h3: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF2D3748)),
-                      p: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF2D3748),
-                          height: 1.7),
-                      listBullet: const TextStyle(
-                          fontSize: 13, color: Color(0xFF2D3748)),
-                      strong: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0E1726)),
-                      blockquoteDecoration: BoxDecoration(
-                        color: const Color(0xFFEEF1F7),
-                        borderRadius: BorderRadius.circular(8),
-                        border: const Border(
-                          right: BorderSide(
-                              color: Color(0xFF1E3A72), width: 3),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
       );
 }

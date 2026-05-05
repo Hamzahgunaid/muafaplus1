@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../providers/physician_auth_provider.dart';
+import '../../../core/widgets/article_outline_card.dart';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -78,20 +78,25 @@ class EngagementTimeline {
 
 class ReferralArticle {
   final String articleId;
-  final String titleAr;
-  final String contentAr;
+  final String title;
+  final String? content;
 
   ReferralArticle({
     required this.articleId,
-    required this.titleAr,
-    required this.contentAr,
+    required this.title,
+    this.content,
   });
 
-  factory ReferralArticle.fromJson(Map<String, dynamic> j) => ReferralArticle(
-        articleId: j['articleId'] ?? j['id'] ?? '',
-        titleAr: j['title'] ?? j['titleAr'] ?? j['title_ar'] ?? j['articleTitle'] ?? j['heading'] ?? '',
-        contentAr: j['content_ar'] ?? j['content'] ?? j['contentAr'] ?? j['articleContent'] ?? j['body'] ?? '',
-      );
+  factory ReferralArticle.fromJson(Map<String, dynamic> j) {
+    final raw = j['content_ar'] ?? j['content'] ?? j['contentAr'] ??
+        j['articleContent'] ?? j['body'];
+    return ReferralArticle(
+      articleId: j['articleId'] ?? j['id'] ?? '',
+      title: j['title'] ?? j['titleAr'] ?? j['title_ar'] ??
+          j['articleTitle'] ?? j['heading'] ?? '',
+      content: (raw != null && (raw as String).isNotEmpty) ? raw : null,
+    );
+  }
 }
 
 // ─── Providers ────────────────────────────────────────────────────────────────
@@ -126,9 +131,36 @@ final providerReferralArticlesProvider =
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-class ProviderReferralDetailScreen extends ConsumerWidget {
+class ProviderReferralDetailScreen extends ConsumerStatefulWidget {
   final String referralId;
   const ProviderReferralDetailScreen({super.key, required this.referralId});
+
+  @override
+  ConsumerState<ProviderReferralDetailScreen> createState() =>
+      _ProviderReferralDetailScreenState();
+}
+
+class _ProviderReferralDetailScreenState
+    extends ConsumerState<ProviderReferralDetailScreen> {
+  bool _generatingAll = false;
+
+  Future<void> _generateArticles() async {
+    setState(() => _generatingAll = true);
+    try {
+      final auth = ref.read(physicianAuthProvider);
+      final dio = Dio();
+      await dio.post(
+        'https://muafaplus1-production.up.railway.app/api/v1/referrals/${widget.referralId}/stage2',
+        options: Options(headers: {'Authorization': 'Bearer ${auth.token}'}),
+      );
+      ref.invalidate(providerReferralArticlesProvider(widget.referralId));
+    } catch (_) {
+      // Silently refresh — articles may appear on next load
+      ref.invalidate(providerReferralArticlesProvider(widget.referralId));
+    } finally {
+      if (mounted) setState(() => _generatingAll = false);
+    }
+  }
 
   Color _riskColor(String level) {
     switch (level.toUpperCase()) {
@@ -168,8 +200,8 @@ class ProviderReferralDetailScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final detailAsync = ref.watch(providerReferralDetailProvider(referralId));
+  Widget build(BuildContext context) {
+    final detailAsync = ref.watch(providerReferralDetailProvider(widget.referralId));
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -356,7 +388,7 @@ class ProviderReferralDetailScreen extends ConsumerWidget {
                         providerReferralArticlesProvider(detail.referralId));
                     return articlesAsync.when(
                       data: (articles) {
-                        if (articles.isEmpty) {
+                        if (articles.isEmpty && !_generatingAll) {
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -364,20 +396,20 @@ class ProviderReferralDetailScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: const Color(0xFFEEF0F5)),
                             ),
-                            child: const Column(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('المحتوى المولَّد',
+                                const Text('المحتوى المولَّد',
                                     style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFF0E1726))),
-                                SizedBox(height: 12),
-                                Center(
-                                  child: Text('لا توجد مقالات بعد',
-                                      style: TextStyle(
-                                          color: Color(0xFF8A93A6),
-                                          fontSize: 13)),
+                                const SizedBox(height: 12),
+                                ArticleOutlineCard(
+                                  index: 1,
+                                  title: 'المقالات التفصيلية',
+                                  state: ArticleOutlineState.notGenerated,
+                                  onGenerate: _generateArticles,
                                 ),
                               ],
                             ),
@@ -415,8 +447,19 @@ class ProviderReferralDetailScreen extends ConsumerWidget {
                             ...articles.asMap().entries.map((entry) {
                               final i = entry.key;
                               final article = entry.value;
-                              return _ArticleCard(
-                                  article: article, index: i + 1);
+                              final isGen = _generatingAll && article.content == null;
+                              return ArticleOutlineCard(
+                                key: ValueKey(article.articleId),
+                                index: i + 1,
+                                title: article.title,
+                                state: isGen
+                                    ? ArticleOutlineState.generating
+                                    : (article.content != null
+                                        ? ArticleOutlineState.generated
+                                        : ArticleOutlineState.notGenerated),
+                                onGenerate: isGen ? null : _generateArticles,
+                                content: article.content,
+                              );
                             }),
                           ],
                         );
@@ -463,7 +506,7 @@ class ProviderReferralDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () =>
-                      ref.refresh(providerReferralDetailProvider(referralId)),
+                      ref.refresh(providerReferralDetailProvider(widget.referralId)),
                   child: const Text('إعادة المحاولة',
                       style: TextStyle(color: Color(0xFF1E3A72))),
                 ),
@@ -573,140 +616,4 @@ class _TimelineStep extends StatelessWidget {
           ),
         ],
       );
-}
-
-// ─── Article card (expandable) ────────────────────────────────────────────────
-
-class _ArticleCard extends StatefulWidget {
-  final ReferralArticle article;
-  final int index;
-  const _ArticleCard({required this.article, required this.index});
-
-  @override
-  State<_ArticleCard> createState() => _ArticleCardState();
-}
-
-class _ArticleCardState extends State<_ArticleCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _expanded
-              ? const Color(0xFF1E3A72)
-              : const Color(0xFFEEF0F5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0E1726).withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 28, height: 28,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF1F7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text('${widget.index}',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1E3A72))),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.article.titleAr.isNotEmpty
-                          ? widget.article.titleAr
-                          : 'مقال ${widget.index}',
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0E1726)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: const Color(0xFF8A93A6),
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_expanded)
-            Container(
-              decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: Color(0xFFEEF0F5)),
-                ),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Directionality(
-                textDirection: TextDirection.rtl,
-                child: MarkdownBody(
-                  data: widget.article.contentAr.isNotEmpty
-                      ? widget.article.contentAr
-                      : '_لا يوجد محتوى_',
-                  styleSheet: MarkdownStyleSheet(
-                    h1: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0E1726)),
-                    h2: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E3A72)),
-                    h3: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2D3748)),
-                    p: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF2D3748),
-                        height: 1.7),
-                    listBullet: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF2D3748)),
-                    strong: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0E1726)),
-                    blockquoteDecoration: BoxDecoration(
-                      color: const Color(0xFFEEF1F7),
-                      borderRadius: BorderRadius.circular(8),
-                      border: const Border(
-                        right: BorderSide(
-                            color: Color(0xFF1E3A72), width: 3),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
