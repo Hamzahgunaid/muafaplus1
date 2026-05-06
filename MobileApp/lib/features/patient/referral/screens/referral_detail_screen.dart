@@ -4,43 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/models/referral_article.dart';
 import '../../../../core/widgets/article_outline_card.dart';
 import '../../../../features/patient/auth/providers/auth_provider.dart';
 
+const _base = 'https://muafaplus1-production.up.railway.app/api/v1';
+
 // ── Models ──────────────────────────────────────────────────────────────────
-
-class ArticleItem {
-  final String id;
-  final String title;
-  final String content;
-  final String status; // Ready | Generating
-
-  ArticleItem({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.status,
-  });
-
-  factory ArticleItem.fromJson(Map<String, dynamic> j) {
-    return ArticleItem(
-      id: j['articleId'] ?? j['id'] ?? '',
-      title: j['title'] ?? j['articleTitle'] ?? j['heading'] ?? 'مقال طبي',
-      content: j['content_ar'] ?? j['content'] ?? j['articleContent'] ?? j['body'] ?? '',
-      status: j['status'] ?? j['generationStatus'] ?? 'Ready',
-    );
-  }
-
-  bool get isReady => status == 'Ready';
-}
 
 class ReferralDetail {
   final String id;
   final String riskLevel;
   final String primaryDiagnosis;
   final String ageGroup;
-  final ArticleItem? summaryArticle;
-  final List<ArticleItem> stage2Articles;
   final String stage2Status;
 
   ReferralDetail({
@@ -48,16 +24,11 @@ class ReferralDetail {
     required this.riskLevel,
     required this.primaryDiagnosis,
     required this.ageGroup,
-    this.summaryArticle,
-    required this.stage2Articles,
     required this.stage2Status,
   });
 
   factory ReferralDetail.fromJson(Map<String, dynamic> j) {
     final status = j['status'] as String? ?? '';
-
-    // Stage 2 can only be triggered when Stage 1 is fully delivered.
-    // Stage2Requested means it's queued in Hangfire — treat as Generating.
     String stage2Status;
     if (status == 'Stage2Complete') {
       stage2Status = 'Complete';
@@ -66,18 +37,15 @@ class ReferralDetail {
     } else if (status == 'Stage1Complete' || status == 'Stage1Delivered') {
       stage2Status = 'NotRequested';
     } else {
-      // Created or any other pre-Stage1 status — Stage 1 not ready yet
       stage2Status = 'Pending';
     }
-
     return ReferralDetail(
       id: j['referralId'] ?? j['id'] ?? '',
       riskLevel: j['riskLevel'] ?? 'LOW',
       primaryDiagnosis: j['patientProfile']?['primaryDiagnosis'] ??
-        j['primaryDiagnosis'] ?? '',
-      ageGroup: j['patientProfile']?['ageGroup'] ?? j['ageGroup'] ?? '',
-      summaryArticle: null,
-      stage2Articles: [],
+          j['primaryDiagnosis'] ?? '',
+      ageGroup:
+          j['patientProfile']?['ageGroup'] ?? j['ageGroup'] ?? '',
       stage2Status: stage2Status,
     );
   }
@@ -85,55 +53,20 @@ class ReferralDetail {
 
 // ── Providers ────────────────────────────────────────────────────────────────
 
-final referralDetailProvider = FutureProvider.family<ReferralDetail, (String, String)>(
+final referralDetailProvider =
+    FutureProvider.family<ReferralDetail, (String, String)>(
   (ref, params) async {
-    final id = params.$1;
-    final token = params.$2;
-
     final dio = Dio(BaseOptions(
-      baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
+      baseUrl: _base,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer ${params.$2}',
       },
     ));
-
-    final response = await dio.get('/referrals/$id');
-    print('DEBUG referral raw response: ${response.data}');
+    final response = await dio.get('/referrals/${params.$1}');
     return ReferralDetail.fromJson(response.data['data']);
-  },
-);
-
-final stage2StatusProvider = StateProvider.family<String, String>(
-  (ref, id) => 'NotRequested',
-);
-
-final referralArticlesProvider = FutureProvider.family<List<ArticleItem>, (String, String)>(
-  (ref, params) async {
-    final id = params.$1;
-    final token = params.$2;
-
-    final dio = Dio(BaseOptions(
-      baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    ));
-
-    try {
-      final response = await dio.get('/referrals/$id/articles');
-      print('DEBUG articles response: ${response.data}');
-      final list = response.data['data'] as List? ?? [];
-      return list.map((a) => ArticleItem.fromJson(a)).toList();
-    } catch (e) {
-      print('DEBUG articles error: $e');
-      return [];
-    }
   },
 );
 
@@ -145,13 +78,74 @@ class ReferralDetailScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ReferralDetailScreen> createState() =>
-    _ReferralDetailScreenState();
+      _ReferralDetailScreenState();
 }
 
 class _ReferralDetailScreenState
     extends ConsumerState<ReferralDetailScreen> {
-
+  List<ReferralArticle> _articles = [];
+  bool _articlesLoading = true;
   bool _triggeringStage2 = false;
+  bool _stage2Requested = false;
+  bool _articlesLoadTriggered = false;
+
+  Future<void> _loadArticles(String token) async {
+    try {
+      final dio = Dio(BaseOptions(
+        baseUrl: _base,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ));
+      final response =
+          await dio.get('/referrals/${widget.referralId}/articles');
+      final list = response.data['data'] as List? ?? [];
+      if (mounted) {
+        setState(() {
+          _articles = list
+              .map((a) =>
+                  ReferralArticle.fromJson(a as Map<String, dynamic>))
+              .toList();
+          _articlesLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _articlesLoading = false);
+    }
+  }
+
+  Future<void> _triggerStage2(String token) async {
+    setState(() => _triggeringStage2 = true);
+    try {
+      final dio = Dio(BaseOptions(
+        baseUrl: _base,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ));
+      await dio.post('/referrals/${widget.referralId}/stage2', data: {});
+      if (mounted) {
+        setState(() {
+          _stage2Requested = true;
+          _triggeringStage2 = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('حدث خطأ، يرجى المحاولة مجدداً',
+                  style: GoogleFonts.ibmPlexSansArabic())));
+        setState(() => _triggeringStage2 = false);
+      }
+    }
+  }
 
   Color _riskColor(String l) {
     switch (l.toUpperCase()) {
@@ -183,37 +177,109 @@ class _ReferralDetailScreenState
     }
   }
 
-  Future<void> _triggerStage2() async {
-    setState(() => _triggeringStage2 = true);
-    try {
-      final token = ref.read(authProvider).token ?? '';
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://muafaplus1-production.up.railway.app/api/v1',
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ));
-      await dio.post('/referrals/${widget.referralId}/stage2', data: {});
-      ref.invalidate(referralDetailProvider((widget.referralId, token)));
-      ref.invalidate(referralArticlesProvider((widget.referralId, token)));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ، يرجى المحاولة مجدداً',
-            style: GoogleFonts.ibmPlexSansArabic())));
-      }
-    } finally {
-      if (mounted) setState(() => _triggeringStage2 = false);
+  Widget _buildArticleContent(ReferralDetail detail, String token) {
+    // Stage 1 not yet complete
+    if (detail.stage2Status == 'Pending') {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.ink100),
+        ),
+        child: Row(children: [
+          const SizedBox(
+            width: 20, height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppColors.navy600),
+          ),
+          const SizedBox(width: 14),
+          Text('جاري توليد المحتوى الصحي...',
+              style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 14, color: AppColors.ink500)),
+        ]),
+      );
     }
+
+    // Articles loading
+    if (_articlesLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(
+            child:
+                CircularProgressIndicator(color: AppColors.navy600)),
+      );
+    }
+
+    final summaries =
+        _articles.where((a) => a.isSummary).toList();
+    final detailed =
+        _articles.where((a) => a.isDetailed).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Summary section
+        if (summaries.isNotEmpty) ...[
+          _SectionHeader(
+              title: 'الملخص الصحي',
+              icon: Icons.article_outlined),
+          const SizedBox(height: 8),
+          ...summaries.asMap().entries.map((e) => ArticleOutlineCard(
+                key: ValueKey('sum_${e.value.articleId}'),
+                index: e.key + 1,
+                title: e.value.title.isNotEmpty
+                    ? e.value.title
+                    : 'الملخص الصحي',
+                state: ArticleOutlineState.generated,
+                content: e.value.contentAr,
+                // onView: null → inline expand
+              )),
+          const SizedBox(height: 16),
+        ],
+
+        // Detailed section
+        _SectionHeader(
+            title: 'المقالات التفصيلية',
+            icon: Icons.menu_book_outlined),
+        const SizedBox(height: 8),
+
+        if (detailed.isEmpty &&
+            detail.stage2Status == 'NotRequested' &&
+            !_stage2Requested &&
+            !_triggeringStage2)
+          ArticleOutlineCard(
+            index: 1,
+            title: 'المقالات التفصيلية',
+            state: ArticleOutlineState.notGenerated,
+            onGenerate: () => _triggerStage2(token),
+          )
+        else if (detailed.isEmpty &&
+            (detail.stage2Status == 'Generating' ||
+                _stage2Requested ||
+                _triggeringStage2))
+          const ArticleOutlineCard(
+            index: 1,
+            title: 'المقالات التفصيلية',
+            state: ArticleOutlineState.generating,
+          )
+        else ...[
+          ...detailed.asMap().entries.map((e) => ArticleOutlineCard(
+                key: ValueKey('det_${e.value.articleId}'),
+                index: e.key + 1,
+                title: e.value.title,
+                state: ArticleOutlineState.generated,
+                onView: () => context.push(
+                    '/article/${widget.referralId}/${e.value.articleId}'),
+              )),
+        ],
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final token = ref.watch(authProvider).token ?? '';
-    print('DEBUG referralDetail: token=${token.isEmpty ? "EMPTY" : token.substring(0, 20)}, id=${widget.referralId}');
     final detailAsync =
         ref.watch(referralDetailProvider((widget.referralId, token)));
 
@@ -226,231 +292,211 @@ class _ReferralDetailScreenState
           foregroundColor: AppColors.white,
           elevation: 0,
           title: Text('تفاصيل الإحالة',
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontWeight: FontWeight.w700, color: AppColors.white)),
+              style: GoogleFonts.ibmPlexSansArabic(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.white)),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_forward, color: AppColors.white),
+            icon: const Icon(Icons.arrow_forward,
+                color: AppColors.white),
             onPressed: () => context.pop(),
           ),
         ),
         body: detailAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(
-            color: AppColors.navy600)),
-          error: (e, _) => Center(child: Padding(
+          loading: () => const Center(
+              child: CircularProgressIndicator(
+                  color: AppColors.navy600)),
+          error: (e, _) => Center(
+              child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('تعذّر تحميل البيانات. يرجى المحاولة مجدداً',
-              style: GoogleFonts.ibmPlexSansArabic(
-                color: AppColors.ink500, fontSize: 15),
-              textAlign: TextAlign.center),
+            child: Text(
+                'تعذّر تحميل البيانات. يرجى المحاولة مجدداً',
+                style: GoogleFonts.ibmPlexSansArabic(
+                    color: AppColors.ink500, fontSize: 15),
+                textAlign: TextAlign.center),
           )),
-          data: (detail) => _buildContent(detail),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent(ReferralDetail detail) {
-    final token = ref.watch(authProvider).token ?? '';
-    final articlesAsync = ref.watch(
-      referralArticlesProvider((detail.id, token)));
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-
-        // ── Hero card ────────────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: [AppColors.navy600, AppColors.navy800],
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.person_outline,
-                    color: AppColors.white, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(detail.primaryDiagnosis,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 16, fontWeight: FontWeight.w700,
-                        color: AppColors.white)),
-                    if (detail.ageGroup.isNotEmpty)
-                      Text(detail.ageGroup,
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 13,
-                          color: AppColors.white.withOpacity(0.65))),
-                  ],
-                )),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: _riskBg(detail.riskLevel),
-                    borderRadius: BorderRadius.circular(999)),
-                  child: Text(_riskLabel(detail.riskLevel),
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: _riskColor(detail.riskLevel))),
-                ),
-              ]),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.orange500.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.auto_awesome,
-                    color: AppColors.orange500, size: 14),
-                  const SizedBox(width: 6),
-                  Text('مولَّد بواسطة الذكاء الاصطناعي',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 11, color: AppColors.orange500,
-                      fontWeight: FontWeight.w600)),
-                ]),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // ── Articles (loaded from /articles endpoint) ──────────────────────
-        articlesAsync.when(
-          loading: () => const Center(child: Padding(
-            padding: EdgeInsets.all(20),
-            child: CircularProgressIndicator(color: AppColors.navy600))),
-          error: (e, _) => const SizedBox(),
-          data: (articles) {
-            final summary = articles.isNotEmpty ? articles.first : null;
-            final stage2 = articles.length > 1
-              ? articles.sublist(1) : <ArticleItem>[];
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (summary != null) ...[
-                  _SectionHeader(
-                    title: 'الملخص الصحي',
-                    icon: Icons.article_outlined),
-                  const SizedBox(height: 8),
-                  _ArticleCard(
-                    article: summary,
-                    isStage1: true,
-                    onTap: () => context.push('/article/${detail.id}/${summary.id}'),
+          data: (detail) {
+            // Trigger article load once when detail is available
+            if (!_articlesLoadTriggered) {
+              _articlesLoadTriggered = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                if (detail.stage2Status == 'Pending') {
+                  setState(() => _articlesLoading = false);
+                } else {
+                  _loadArticles(token);
+                }
+              });
+            }
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Hero card ────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          AppColors.navy600,
+                          AppColors.navy800
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Container(
+                            width: 44, height: 44,
+                            decoration: BoxDecoration(
+                                color:
+                                    AppColors.white.withOpacity(0.15),
+                                borderRadius:
+                                    BorderRadius.circular(12)),
+                            child: const Icon(Icons.person_outline,
+                                color: AppColors.white, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                detail.primaryDiagnosis.isNotEmpty
+                                    ? detail.primaryDiagnosis
+                                    : 'إحالة طبية',
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.white),
+                              ),
+                              if (detail.ageGroup.isNotEmpty)
+                                Text(detail.ageGroup,
+                                    style:
+                                        GoogleFonts.ibmPlexSansArabic(
+                                            fontSize: 13,
+                                            color: AppColors.white
+                                                .withOpacity(0.65))),
+                            ],
+                          )),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                                color: _riskBg(detail.riskLevel),
+                                borderRadius:
+                                    BorderRadius.circular(999)),
+                            child: Text(
+                                _riskLabel(detail.riskLevel),
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        _riskColor(detail.riskLevel))),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                              color:
+                                  AppColors.orange500.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8)),
+                          child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.auto_awesome,
+                                    color: AppColors.orange500,
+                                    size: 14),
+                                const SizedBox(width: 6),
+                                Text('مولَّد بواسطة الذكاء الاصطناعي',
+                                    style:
+                                        GoogleFonts.ibmPlexSansArabic(
+                                            fontSize: 11,
+                                            color: AppColors.orange500,
+                                            fontWeight:
+                                                FontWeight.w600)),
+                              ]),
+                        ),
+                      ],
+                    ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Article content ───────────────────────────────
+                  _buildArticleContent(detail, token),
+
+                  const SizedBox(height: 16),
+
+                  // ── Feedback button ───────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          context.push('/feedback/${detail.id}'),
+                      icon: const Icon(Icons.rate_review_outlined,
+                          size: 20),
+                      label: Text('إنهاء وتقديم التقييم',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.navy600,
+                          foregroundColor: AppColors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // ── Disclaimer ────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.orange500.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppColors.orange500.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline,
+                              color: AppColors.orange500, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: Text(
+                            'هذا المحتوى للتثقيف الصحي فقط ولا يُغني عن استشارة طبيبك',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 11,
+                                color: AppColors.orange500,
+                                height: 1.5),
+                          )),
+                        ]),
+                  ),
+
                   const SizedBox(height: 16),
                 ],
-
-                _SectionHeader(
-                  title: 'المقالات التفصيلية',
-                  icon: Icons.menu_book_outlined),
-                const SizedBox(height: 8),
-
-                if (detail.stage2Status == 'NotRequested')
-                  ArticleOutlineCard(
-                    index: 1,
-                    title: 'المقالات التفصيلية',
-                    state: _triggeringStage2
-                        ? ArticleOutlineState.generating
-                        : ArticleOutlineState.notGenerated,
-                    onGenerate: _triggeringStage2 ? null : _triggerStage2,
-                  )
-                else if (detail.stage2Status == 'Generating' ||
-                         detail.stage2Status == 'Pending')
-                  const ArticleOutlineCard(
-                    index: 1,
-                    title: 'المقالات التفصيلية',
-                    state: ArticleOutlineState.generating,
-                  )
-                else ...[
-                  ...stage2.asMap().entries.map((e) => ArticleOutlineCard(
-                    key: ValueKey(e.value.id),
-                    index: e.key + 1,
-                    title: e.value.title,
-                    state: e.value.isReady
-                        ? ArticleOutlineState.generated
-                        : ArticleOutlineState.generating,
-                    onView: e.value.isReady
-                        ? () => context.push('/article/${detail.id}/${e.value.id}')
-                        : null,
-                  )),
-                ],
-              ],
+              ),
             );
           },
         ),
-
-        const SizedBox(height: 16),
-
-        // ── Feedback button ───────────────────────────────────────────────
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: () => context.push('/feedback/${detail.id}'),
-            icon: const Icon(Icons.rate_review_outlined, size: 20),
-            label: Text('إنهاء وتقديم التقييم',
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 15, fontWeight: FontWeight.w700)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.navy600,
-              foregroundColor: AppColors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-              elevation: 0),
-          ),
-        ),
-
-        const SizedBox(height: 32),
-
-        // ── Disclaimer ────────────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.orange500.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.orange500.withOpacity(0.2)),
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            const Icon(Icons.info_outline,
-              color: AppColors.orange500, size: 16),
-            const SizedBox(width: 8),
-            Expanded(child: Text(
-              'هذا المحتوى للتثقيف الصحي فقط ولا يُغني عن استشارة طبيبك',
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 11, color: AppColors.orange500, height: 1.5))),
-          ]),
-        ),
-
-        const SizedBox(height: 16),
-      ],
       ),
     );
   }
 }
 
-// ── Sub-widgets ───────────────────────────────────────────────────────────────
+// ── Helper widgets ────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   final String title;
@@ -458,93 +504,13 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, required this.icon});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Icon(icon, color: AppColors.navy600, size: 18),
-      const SizedBox(width: 8),
-      Text(title, style: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 15, fontWeight: FontWeight.w700,
-        color: AppColors.ink900)),
-    ]);
-  }
+  Widget build(BuildContext context) => Row(children: [
+        Icon(icon, color: AppColors.navy600, size: 18),
+        const SizedBox(width: 8),
+        Text(title,
+            style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink900)),
+      ]);
 }
-
-class _ArticleCard extends StatelessWidget {
-  final ArticleItem article;
-  final bool isStage1;
-  final VoidCallback? onTap;
-  const _ArticleCard({
-    required this.article,
-    required this.isStage1,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isGenerating = !article.isReady;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.ink100),
-          boxShadow: const [BoxShadow(
-            color: Color(0x0A0E1726), blurRadius: 8,
-            offset: Offset(0, 2))],
-        ),
-        child: Row(children: [
-          Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: isStage1
-                ? AppColors.orange500.withOpacity(0.1)
-                : AppColors.navy600.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10)),
-            child: Icon(
-              isStage1 ? Icons.summarize_outlined : Icons.article_outlined,
-              color: isStage1 ? AppColors.orange500 : AppColors.navy600,
-              size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(article.title.isNotEmpty ? article.title : 'مقال طبي',
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 14, fontWeight: FontWeight.w600,
-                  color: isGenerating
-                    ? AppColors.ink400 : AppColors.ink900),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
-              if (isGenerating) ...[
-                const SizedBox(height: 4),
-                Row(children: [
-                  Container(
-                    width: 6, height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.orange500,
-                      shape: BoxShape.circle)),
-                  const SizedBox(width: 6),
-                  Text('جارٍ التوليد...',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 11, color: AppColors.orange500)),
-                ]),
-              ],
-            ],
-          )),
-          if (!isGenerating && onTap != null)
-            const Icon(Icons.chevron_left,
-              color: AppColors.ink400, size: 20),
-          if (isGenerating)
-            const SizedBox(
-              width: 16, height: 16,
-              child: CircularProgressIndicator(
-                color: AppColors.orange500, strokeWidth: 2)),
-        ]),
-      ),
-    );
-  }
-}
-
