@@ -16,6 +16,8 @@ import '../../features/provider/screens/test_scenarios_screen.dart';
 import '../../features/provider/screens/create_test_scenario_screen.dart';
 import '../../features/provider/screens/test_scenario_detail_screen.dart';
 import '../../features/provider/screens/evaluation_form_screen.dart';
+import '../../features/assistant/screens/assistant_dashboard_screen.dart';
+import '../../features/assistant/screens/assistant_referrals_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -65,6 +67,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/provider/test-scenarios/:id/evaluate',
         builder: (_, state) => EvaluationFormScreen(
           scenarioId: state.pathParameters['id']!)),
+
+      // ── Assistant routes ─────────────────────────────────────────────────
+      GoRoute(path: '/assistant/dashboard',
+        builder: (_, __) => const AssistantDashboardScreen()),
+      GoRoute(path: '/assistant/referrals',
+        builder: (_, __) => const AssistantReferralsScreen()),
     ],
   );
 });

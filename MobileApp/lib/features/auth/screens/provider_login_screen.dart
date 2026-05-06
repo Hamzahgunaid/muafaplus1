@@ -188,7 +188,12 @@ class _ProviderLoginScreenState extends ConsumerState<ProviderLoginScreen> {
                                     .login(email, password);
                                 final state = ref.read(physicianAuthProvider);
                                 if (state.token != null && mounted) {
-                                  context.go('/provider/dashboard');
+                                  final role = state.role?.toLowerCase() ?? '';
+                                  if (role == 'assistant') {
+                                    context.go('/assistant/dashboard');
+                                  } else {
+                                    context.go('/provider/dashboard');
+                                  }
                                 }
                               },
                           style: ElevatedButton.styleFrom(

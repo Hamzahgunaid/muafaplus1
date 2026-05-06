@@ -26,7 +26,12 @@ class _SplashDeciderScreenState extends ConsumerState<SplashDeciderScreen> {
       if (auth.token != null) {
         context.go('/home');
       } else if (physician.token != null) {
-        context.go('/provider/dashboard');
+        final role = physician.role?.toLowerCase() ?? '';
+        if (role == 'assistant') {
+          context.go('/assistant/dashboard');
+        } else {
+          context.go('/provider/dashboard');
+        }
       } else {
         context.go('/login');
       }
