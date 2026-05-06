@@ -40,7 +40,7 @@ class ProviderReferralDetail {
   factory ProviderReferralDetail.fromJson(Map<String, dynamic> j) =>
       ProviderReferralDetail(
         referralId: j['referralId'] as String? ?? '',
-        sessionId: j['sessionId'] as String? ?? j['generationSessionId'] as String?,
+        sessionId: j['sessionId'] as String?,
         status: j['status'] as String? ?? '',
         riskLevel: j['riskLevel'] as String? ?? 'LOW',
         patientPhone: j['patientPhone'] as String? ?? '',
@@ -215,7 +215,17 @@ class _ProviderReferralDetailScreenState
   Widget _buildArticleSection(ProviderReferralDetail detail, String token) {
     // Stage 1 not yet complete
     if (detail.sessionId == null) {
-      return _spinnerCard('جاري توليد المحتوى الصحي...');
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Color(0xFF1E3A72)),
+            SizedBox(height: 12),
+            Text('جاري توليد المحتوى الصحي...',
+                style: TextStyle(color: Color(0xFF5A6478))),
+          ],
+        ),
+      );
     }
 
     // Articles still loading
